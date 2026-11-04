@@ -19,12 +19,15 @@
   --body:-apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,'Segoe UI',Roboto,sans-serif;
   --r-l:22px;--r-m:16px;--r-s:12px;
   --panel:rgba(255,255,255,.075);--panel2:rgba(255,255,255,.09);--line:rgba(255,255,255,.11);--well:rgba(0,0,0,.34);--ink:#F4F2F8;--mute:#ACA8B8;--good:#6FE3A5;--warn:#FFD479;--bad:#FF7A7A;
-  --bg:#0A0B18;--glow:#2D2E8E;--acc:#8F8BFF;--on:#0C0B33;--acc-a:rgba(143,139,255,.45);
+  --tabbg:#3E3F97;--bg:#0A0B18;--glow:#2D2E8E;--acc:#8F8BFF;--on:#0C0B33;--acc-a:rgba(143,139,255,.45);
 }
-[data-sec="gym"]{--mute:#ACA8B8}
-[data-sec="food"]{--bg:#110C0A;--glow:#5E2914;--acc:#FF8A5C;--on:#210C03;--acc-a:rgba(255,138,92,.45);--ink:#F8F2EE;--mute:#BDAEA5}
+[data-sec="gym"]{--mute:#ACA8B8;--tabbg:#3E3F97}
+[data-sec="food"]{--tabbg:#6B3A27;--bg:#110C0A;--glow:#5E2914;--acc:#FF8A5C;--on:#210C03;--acc-a:rgba(255,138,92,.45);--ink:#F8F2EE;--mute:#BDAEA5}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;overflow:hidden}
+/* iOS gives home screen apps a viewport one status bar shorter than the screen; the strip below it shows the page canvas, so paint the canvas in the tab bar colour */
+html{background:var(--tabbg);transition:background .25s}
+html.hyping{background:#040508}
 body{background:var(--bg);color:var(--ink);font:400 16px/1.35 var(--body);transition:background .25s;-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%}
 button,input,select{font:inherit;color:inherit}
 button{background:none;border:0;padding:0;cursor:pointer;text-align:left;touch-action:manipulation}
@@ -54,6 +57,7 @@ button:disabled{opacity:.45}
 .vh{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none}
 /* tabs */
 #tabs{flex:none;position:relative;background:linear-gradient(rgba(255,255,255,.08),rgba(255,255,255,.08)),var(--glow);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+#tabs::after{content:"";position:absolute;left:0;right:0;top:100%;height:120px;background:var(--tabbg);pointer-events:none}
 #tabbtn{display:grid;grid-template-columns:1fr 1fr}
 #tabind{position:absolute;top:-1px;left:0;width:50%;height:3px;background:#fff;transition:transform .3s cubic-bezier(.22,.8,.25,1);z-index:1}
 #tabind.drag{transition:none}
@@ -202,6 +206,9 @@ button:disabled{opacity:.45}
 .mt input.input{min-height:42px;background:var(--panel2)}
 .vswitch{display:flex;align-items:center;gap:10px;min-height:40px}
 .vswitch input{width:51px;height:31px}
+.tickover{position:relative;overflow:hidden}
+.tickover input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:.01}
+#hapc{position:fixed;left:8px;bottom:8px;width:51px;height:31px;margin:0;opacity:.01;pointer-events:none;z-index:100}
 /* hidden switch used for the haptic tick; it must stay rendered, so it is moved out of sight instead of hidden */
 #hap{position:fixed;left:0;top:0;width:1px;height:1px;opacity:.01;overflow:hidden;pointer-events:none;z-index:-1}
 /* set that would be a PR */
@@ -239,6 +246,7 @@ button:disabled{opacity:.45}
 
 <div id="app"><div id="scroll"><div id="pager"><div class="pane" id="pane-gym" data-sec="gym"></div><div class="pane" id="pane-food" data-sec="food"></div></div></div><nav id="tabs" aria-label="Sections"><div id="tabind"></div><div id="tabbtn"></div></nav></div>
 <label id="hap" aria-hidden="true"><input type="checkbox" switch tabindex="-1"></label>
+<input type="checkbox" switch id="hapc" tabindex="-1" aria-hidden="true">
 <div id="sheet" hidden></div>
 <div id="toast" hidden></div>
 <div id="hype" hidden></div>
@@ -246,7 +254,7 @@ button:disabled{opacity:.45}
 
 <script>
 'use strict';
-const APP_VERSION='0.3.0';
+const APP_VERSION='0.3.1';
 /* ---------- personal data lives in the private repo; these are filled from local storage at start ---------- */
 let SPLIT=[],EX={},FOODS=[],SUPPS=[],MAINT=2500,BASE_MEALS=[],TEST_BC=[];
 const PHASES=[['cut','Lose fat',-400],['main','Maintain',0],['lean','Lean gain',250],['bulk','Bulk',500]];
@@ -554,13 +562,15 @@ function dictHTML(q){
 
 /* ---------- reward popups ---------- */
 const PICPOS={'ruhl-1':'63% 30%','ruhl-2':'50% 8%','ruhl-3':'42% 0%','ruhl-4':'60% 8%','ruhl-5':'40% 8%','coleman-1':'50% 8%','coleman-2':'50% 18%','coleman-3':'48% 0%','coleman-4':'38% 30%','coleman-5':'35% 0%'};
+/* haptic tick test variants: B makes a fresh hidden switch per tap, C clicks a full-size transparent switch */
+const hapB=()=>{const l=document.createElement('label'),i=document.createElement('input');i.type='checkbox';i.setAttribute('switch','');l.appendChild(i);l.style.display='none';document.body.appendChild(l);l.click();l.remove()};
 const hapt=()=>{try{document.getElementById('hap').click()}catch(e){}if(navigator.vibrate)navigator.vibrate([40,30,120,40,60])};
 let PICS={ruhl:[],coleman:[]};
 const HYPE={protein:{set:'ruhl',kicker:'Protein goal',btn:'Des Bedarfs'},weight:{set:'coleman',kicker:'Weight PR',btn:'Lightweight, baby!'},rep:{set:'ruhl',kicker:'Rep PR',btn:'Drück, du Sau!'}};
 const hypeQ=[],lastPic={};
 function hype(kind,cap){hypeQ.push({kind,cap});if(document.getElementById('hype').hidden)nextHype()}
 function nextHype(){
- const el=document.getElementById('hype'),h=hypeQ.shift();if(!h){el.hidden=true;el.innerHTML='';return}
+ const el=document.getElementById('hype'),h=hypeQ.shift();if(!h){el.hidden=true;el.innerHTML='';document.documentElement.classList.remove('hyping');return}document.documentElement.classList.add('hyping');
  const c=HYPE[h.kind],arr=PICS[c.set]||[];let i=Math.floor(Math.random()*arr.length);if(arr.length>1&&i===lastPic[c.set])i=(i+1)%arr.length;lastPic[c.set]=i;const pic=arr[i];
  const bits=Array.from({length:40},(_,k)=>{const a=k/40*Math.PI*2+(k%3)*.13,d=170+(k*73)%320;return `<i class="hbit" style="--x:${Math.round(Math.cos(a)*d)}px;--y:${Math.round(Math.sin(a)*d)}px;--r:${(k*97)%540}deg"></i>`}).join('');
  el.innerHTML=`<div class="hstage" role="dialog" aria-label="${esc(c.kicker)}"><div class="himgwrap">${pic?`<img src="${pic.url}" alt="" style="object-position:${PICPOS[pic.name]||'50% 10%'}" onerror="this.style.display='none'">`:''}<div class="hshade"></div><div class="hkicker">${esc(c.kicker)}</div><div class="hcap">${esc(h.cap)}</div></div><button class="hbtn" data-a="hypeclose" disabled>${esc(c.btn)}</button></div><i class="hflash"></i><i class="hring"></i><i class="hring r2"></i>${bits}`;
@@ -724,10 +734,10 @@ const AUTO=[
  ['camera','Camera API',async()=>{const ok=!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia);let cams='';try{const ds=await navigator.mediaDevices.enumerateDevices();cams=` ${ds.filter(d=>d.kind==='videoinput').length} cameras listed.`}catch(e){}return{ok,detail:(ok?'getUserMedia is available.':'getUserMedia is missing.')+cams+(CAM.at?` Last scan session: ${CAM.ok?'camera started':'failed: '+CAM.err}${CAM.size?', '+CAM.size:''}${CAM.frames?', '+CAM.frames+' frames read':''}${CAM.code?', found '+CAM.code+' after '+Math.round(CAM.ms/100)/10+' s':''}.`:' Use the hands-on scan test for the live camera.')}}],
  ['offprod','Open Food Facts barcode lookup',async()=>{const code=TEST_BC[0]||'3017620422003';const p=await offProduct(code,true);return{ok:!!p,detail:p?`${code}: ${p.n}. Per 100 ${p.u}: ${p.k??'?'} kcal, ${p.p??'?'} g protein, ${p.c??'?'} g carbs, ${p.f??'?'} g fat.`:`${code} not found`}}],
  ['offsearch','Open Food Facts text search (German products)',async()=>{const l=await offSearch('tofu natur');return{ok:l.length>0,detail:`${l.length} results for “tofu natur”${l[0]?', first: '+l[0].n:''}. Results are cached for a day.`}}],
- ['github','GitHub private repository',async()=>{if(!GHC)return{ok:false,detail:'Not connected'};const j=await ghRepo(GHC);const l=await ghList('backups');return{ok:!!j.private,detail:`${j.full_name} is ${j.private?'private':'PUBLIC – make it private!'}. ${l.length} backup files.`}}],
+ ['github','GitHub private repository',async()=>{if(!GHC)return{ok:false,detail:'Not connected'};const j=await ghRepo(GHC);const l=(await ghList('backups')).filter(f=>/.json$/.test(f.name));return{ok:!!j.private,detail:`${j.full_name} is ${j.private?'private':'PUBLIC – make it private!'}. ${l.length} backup file${l.length===1?'':'s'}.`}}],
  ['backup','Backup within the last 7 days',async()=>{const r=GHC&&navigator.onLine?await backup('device test'):{ok:false,msg:GHC?'Offline':'Not connected'};return{ok:r.ok&&!backupStale(),detail:`${r.msg}. Last success ${ago(BK.lastOk)}.`}}],
  ['share','File export (share sheet with files)',async()=>{let f;try{f=new File(['{}'],'t.json',{type:'application/json'})}catch(e){}const ok=!!(f&&navigator.canShare&&navigator.canShare({files:[f]}));return{ok,detail:`${ok?'Sharing files is supported.':'Sharing files is not supported; export falls back to a download.'} showSaveFilePicker: ${'showSaveFilePicker' in window?'present':'absent'}.${EXP.at?` Last export: ${EXP.ok===false?'failed '+EXP.err:EXP.ok===null?'cancelled':'done via '+EXP.how}.`:''}`}}],
- ['layout','Tab bar reaches the bottom, notch is clear',async()=>{const ins=insets(),tb=document.getElementById('tabs').getBoundingClientRect(),pane=document.getElementById('scroll').getBoundingClientRect(),H=window.innerHeight;const gap=Math.round(H-tb.bottom),ok=Math.abs(gap)<=1&&pane.top>=ins.t-0.5&&(!isStandalone()||ins.b>0);return{ok,detail:`Screen ${innerWidth}×${H}. Safe areas: top ${ins.t}, bottom ${ins.b}, left ${ins.l}, right ${ins.r}. Tab bar ends ${gap} px above the screen edge, content starts at ${Math.round(pane.top)} px. Check visually too.`}}],
+ ['layout','Tab bar reaches the bottom, notch is clear',async()=>{const ins=insets(),tb=document.getElementById('tabs').getBoundingClientRect(),pane=document.getElementById('scroll').getBoundingClientRect(),H=window.innerHeight;const gap=Math.round(H-tb.bottom),short=Math.round(screen.height-H),ok=Math.abs(gap)<=1&&pane.top>=ins.t-0.5&&(!isStandalone()||ins.b>0);return{ok,detail:`Screen ${innerWidth}×${H}. Safe areas: top ${ins.t}, bottom ${ins.b}, left ${ins.l}, right ${ins.r}. Tab bar ends ${gap} px above the screen edge, content starts at ${Math.round(pane.top)} px. Device screen height ${screen.height}, app viewport ${short} px shorter${short>1&&isStandalone()?' (iOS quirk; that strip is painted in the tab bar colour)':''}. Check visually too.`}}],
  ['anim','Shaking Log PR button, frame rate',async()=>{const el=document.getElementById('animdemo');if(el){el.classList.remove('armpop');void el.offsetWidth;el.classList.add('armpop')}const r=await measureFrames(1500);return{ok:fpsOK(r),detail:fpsTxt(r)+'. Use the popup buttons below for the reward test.'}}],
  ['haptic','Haptic switch support',async()=>{const i=document.createElement('input');i.type='checkbox';i.setAttribute('switch','');const sw='switch' in i;return{ok:null,detail:`Switch control ${sw?'is supported (iOS 17.4 or later)':'is not detected'}. Vibration API: ${'vibrate' in navigator?'present':'absent'}. Feel test below.`}}],
  ['speech','Speech recognition API',async()=>{const has='SpeechRecognition' in window||'webkitSpeechRecognition' in window;return{ok:null,detail:`${has?'Present':'Absent'}. Not used; dictation uses the keyboard microphone.`}}],
@@ -746,7 +756,7 @@ const MAN=[
  ['layout','10. Layout','Look at the bottom: the tab bar colour must reach the screen edge with no strip. Nothing may hide behind the notch or the home bar, on both Gym and Food and in sheets.'],
  ['swipe','11. Swipe','Swipe left and right between Gym and Food, starting in the middle and near the edges. Scroll up and down. Pass if switching is easy and never fights vertical scrolling.'],
  ['anim','12. Animations','Play both popups. Pass if the photo smash, shake and confetti run smoothly, and the shaking Log PR button below looks fluid.',[['Weight PR popup','hype:weight'],['Rep PR popup','hype:rep']]],
- ['haptic','13. Haptics','First flip the visible switch: you should feel a tick. Then tap “Hidden tick”. Pass if the hidden one also ticks. Don’t spend long on this.',[['Hidden tick','act:hapt']]],
+ ['haptic','13. Haptics','First flip the visible switch to feel what a tick is like. Then tap Tick A, B, C and D one at a time and write in the note which ones tick, for example “B and D”. Pass if at least one ticks. Tick D is different: your finger lands on an invisible switch.',[['Tick A','act:hapA'],['Tick B','act:hapB'],['Tick C','act:hapC']]],
  ['wakelock','14. Screen stays on','Start a workout and leave the phone untouched for longer than your auto-lock time. Pass if the screen stays on.',[['Keep screen on now','act:wl']]]
 ];
 const badge=ok=>ok===true?'<span class="badge pass">PASS</span>':ok===false?'<span class="badge fail">FAIL</span>':ok==='run'?'<span class="badge">…</span>':ok===undefined?'<span class="badge">—</span>':'<span class="badge">INFO</span>';
@@ -758,6 +768,7 @@ function devtestHTML(){
  <span class="label" style="margin-top:6px">Hands-on tests</span>
  ${MAN.map(([id,title,how,tools])=>{const m=DT.manual[id]||{};return `<div class="mt"><div class="tt"><span>${esc(title)}</span>${badge(m.state==='pass'?true:m.state==='fail'?false:undefined)}</div><div class="how">${esc(how.replace('{BC}',TEST_BC.length?TEST_BC.join(' and '):'any two packaged foods'))}</div>
   ${id==='haptic'?`<label class="vswitch"><input type="checkbox" switch> <span class="small">Visible switch</span></label>`:''}
+  ${id==='haptic'?`<label class="ghost tickover" style="min-height:40px;font-size:14.5px;border-radius:var(--r-s)">Tick D<input type="checkbox" switch tabindex="-1"></label>`:''}
   ${tools?`<div class="tools">${tools.map(([l,t])=>`<button class="ghost" data-a="dttool" data-t="${t}">${esc(l)}</button>`).join('')}</div>`:''}
   <div class="pf"><button class="pass ${m.state==='pass'?'on':''}" data-a="dtmark" data-id="${id}" data-t="pass">Pass</button><button class="fail ${m.state==='fail'?'on':''}" data-a="dtmark" data-id="${id}" data-t="fail">Fail</button></div>
   <input class="input" data-dtnote="${id}" placeholder="Note (what happened)" value="${esc(m.note||'')}" autocomplete="off"></div>`}).join('')}
@@ -773,7 +784,7 @@ const paneEl=()=>document.getElementById(S.tab==='gym'?'pane-gym':'pane-food');
 function placePager(idx,dx){const w=document.getElementById('scroll').clientWidth||1;document.getElementById('pager').style.transform=`translateX(calc(${-50*idx}% + ${dx}px))`;document.getElementById('tabind').style.transform=`translateX(${(idx-dx/w)*100}%)`}
 function render(){
  if(!S)return;
- document.body.dataset.sec=S.tab;
+ document.body.dataset.sec=S.tab;document.documentElement.dataset.sec=S.tab;
  const pg=document.getElementById('pane-gym'),pf=document.getElementById('pane-food'),tg=pg.scrollTop,tf=pf.scrollTop;
  pg.innerHTML=S.cur?gymLive():gymHome();pf.innerHTML=foodHome();pg.scrollTop=tg;pf.scrollTop=tf;
  pg.inert=S.tab!=='gym';pf.inert=S.tab!=='food';
@@ -865,7 +876,7 @@ const A={
  dtmark(el){const id=el.dataset.id,m=DT.manual[id]||(DT.manual[id]={});m.state=m.state===el.dataset.t?null:el.dataset.t;saveDT();render()},
  dtclear(){DT={auto:{},manual:{}};saveDT();render()},
  dtshare(){const txt=dtReport();if(navigator.share){navigator.share({title:'Gym app device test',text:txt}).catch(()=>{})}else if(navigator.clipboard){navigator.clipboard.writeText(txt).then(()=>toast('Results copied'))}},
- dttool(el){const[k,v]=el.dataset.t.split(':');if(k==='sheet'){sheet={s:v};render()}else if(k==='gotab'){S.tab=v;sheet=null;save();render()}else if(k==='hype')popupTest(v);else if(k==='act'){if(v==='hapt')hapt();else if(v==='wl'){if(!S.cur){toast('Start a workout first; the lock is held during workouts')}else{keepAwake().then(()=>toast(WL.ok?'Screen wake lock is on':'Wake lock failed: '+WL.err))}}else A[v](el)}}
+ dttool(el){const[k,v]=el.dataset.t.split(':');if(k==='sheet'){sheet={s:v};render()}else if(k==='gotab'){S.tab=v;sheet=null;save();render()}else if(k==='hype')popupTest(v);else if(k==='act'){if(v==='hapA')hapt();else if(v==='hapB')hapB();else if(v==='hapC'){const i=document.getElementById('hapc');if(i)i.click()}else if(v==='wl'){if(!S.cur){toast('Start a workout first; the lock is held during workouts')}else{keepAwake().then(()=>toast(WL.ok?'Screen wake lock is on':'Wake lock failed: '+WL.err))}}else A[v](el)}}
 };
 async function loadRestoreList(){try{const l=(await ghList('backups')).filter(f=>/\.json$/.test(f.name)).sort((a,b)=>b.name.localeCompare(a.name));if(sheet&&sheet.s==='restore'){sheet.list=l;render()}}catch(e){if(sheet&&sheet.s==='restore'){sheet.list=[];sheet.err=e.message;render()}}}
 function scrollEx(i){const el=document.getElementById('ex'+i),sc=paneEl();if(!el)return;const st=sc.querySelector('.status');const off=(st?st.offsetHeight:0)+6;sc.scrollTop+=el.getBoundingClientRect().top-sc.getBoundingClientRect().top-off}
