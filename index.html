@@ -207,8 +207,10 @@ button:disabled{opacity:.45}
 .vswitch{display:flex;align-items:center;gap:10px;min-height:40px}
 .vswitch input{width:51px;height:31px}
 .tickover{position:relative;overflow:hidden}
-.tickover input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:.01}
-#hapc{position:fixed;left:8px;bottom:8px;width:51px;height:31px;margin:0;opacity:.01;pointer-events:none;z-index:100}
+.tickover input,.tickbtn .tickin{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:.01}
+/* Log set / Log PR: the finger lands on an invisible iOS switch, which gives a haptic tick; the tap still runs the action */
+.tickbtn{position:relative;overflow:hidden;cursor:pointer;-webkit-user-select:none;user-select:none}
+.tickbtn:active{opacity:.75}
 /* hidden switch used for the haptic tick; it must stay rendered, so it is moved out of sight instead of hidden */
 #hap{position:fixed;left:0;top:0;width:1px;height:1px;opacity:.01;overflow:hidden;pointer-events:none;z-index:-1}
 /* set that would be a PR */
@@ -246,7 +248,6 @@ button:disabled{opacity:.45}
 
 <div id="app"><div id="scroll"><div id="pager"><div class="pane" id="pane-gym" data-sec="gym"></div><div class="pane" id="pane-food" data-sec="food"></div></div></div><nav id="tabs" aria-label="Sections"><div id="tabind"></div><div id="tabbtn"></div></nav></div>
 <label id="hap" aria-hidden="true"><input type="checkbox" switch tabindex="-1"></label>
-<input type="checkbox" switch id="hapc" tabindex="-1" aria-hidden="true">
 <div id="sheet" hidden></div>
 <div id="toast" hidden></div>
 <div id="hype" hidden></div>
@@ -254,7 +255,7 @@ button:disabled{opacity:.45}
 
 <script>
 'use strict';
-const APP_VERSION='0.3.1';
+const APP_VERSION='0.3.2';
 /* ---------- personal data lives in the private repo; these are filled from local storage at start ---------- */
 let SPLIT=[],EX={},FOODS=[],SUPPS=[],MAINT=2500,BASE_MEALS=[],TEST_BC=[];
 const PHASES=[['cut','Lose fat',-400],['main','Maintain',0],['lean','Lean gain',250],['bulk','Bulk',500]];
@@ -387,7 +388,7 @@ function activeSet(x,t,si,i){
  return `<div class="active"><div class="beat"><span class="label">Set ${si+1}</span>${willPR?`<span class="need prsign ${pop}">This set is a PR</span>`:`<span class="need">Beat: ${setTxt(t.w,need,t.d)}</span>`}</div>
  <div class="steppers">${stepper('kg',wTxt(t.w),'w','wval')}${stepper(t.d!=null?'Total reps':'Reps',t.r,'r')}</div>
  ${t.d!=null?`<div class="steppers" style="align-items:end">${stepper('Drop to, kg',wTxt(t.d),'dw','dval')}<button class="ghost" style="min-height:62px" data-a="rmdrop">Remove drop</button></div>`:(t.w>0?`<button class="linkbtn" data-a="adddrop">Add drop set</button>`:'')}
- <button class="primary ${willPR?'armbtn '+pop:''}" data-a="log" data-i="${i}" data-j="${si}">${willPR?'Log PR':'Log set'}</button></div>`;
+ <label class="primary tickbtn ${willPR?'armbtn '+pop:''}" role="button" data-a="log" data-i="${i}" data-j="${si}">${willPR?'Log PR':'Log set'}<input type="checkbox" switch class="tickin" tabindex="-1" aria-hidden="true"></label></div>`;
 }
 
 /* ---------- food screens ---------- */
@@ -562,8 +563,6 @@ function dictHTML(q){
 
 /* ---------- reward popups ---------- */
 const PICPOS={'ruhl-1':'63% 30%','ruhl-2':'50% 8%','ruhl-3':'42% 0%','ruhl-4':'60% 8%','ruhl-5':'40% 8%','coleman-1':'50% 8%','coleman-2':'50% 18%','coleman-3':'48% 0%','coleman-4':'38% 30%','coleman-5':'35% 0%'};
-/* haptic tick test variants: B makes a fresh hidden switch per tap, C clicks a full-size transparent switch */
-const hapB=()=>{const l=document.createElement('label'),i=document.createElement('input');i.type='checkbox';i.setAttribute('switch','');l.appendChild(i);l.style.display='none';document.body.appendChild(l);l.click();l.remove()};
 const hapt=()=>{try{document.getElementById('hap').click()}catch(e){}if(navigator.vibrate)navigator.vibrate([40,30,120,40,60])};
 let PICS={ruhl:[],coleman:[]};
 const HYPE={protein:{set:'ruhl',kicker:'Protein goal',btn:'Des Bedarfs'},weight:{set:'coleman',kicker:'Weight PR',btn:'Lightweight, baby!'},rep:{set:'ruhl',kicker:'Rep PR',btn:'Drück, du Sau!'}};
@@ -724,6 +723,14 @@ function drawEAN13(code){const L=['0001101','0011001','0010011','0111101','01000
 const measureFrames=ms=>new Promise(res=>{const t=[],s=performance.now();const f=now=>{t.push(now);if(now-s<ms)requestAnimationFrame(f);else{const d=t.slice(1).map((x,i)=>x-t[i]),avg=d.reduce((a,b)=>a+b,0)/Math.max(1,d.length);res({fps:Math.round(1000/avg),long:d.filter(x=>x>34).length,n:d.length,max:Math.round(Math.max(0,...d))})}};requestAnimationFrame(f)});
 const fpsTxt=r=>`${r.fps} fps average, ${r.long} of ${r.n} frames slower than 34 ms, slowest ${r.max} ms`;
 const fpsOK=r=>r.fps>=50&&r.long<=Math.max(2,r.n*.03);
+/* layout probe: how tall iOS says the screen is, measured several ways */
+function vh(){const m=u=>{const e=document.createElement('div');e.style.cssText=`position:fixed;top:0;left:0;width:1px;height:${u};visibility:hidden;pointer-events:none`;document.body.appendChild(e);const h=e.getBoundingClientRect().height;e.remove();return Math.round(h)};return{screen:screen.height,inner:innerHeight,client:document.documentElement.clientHeight,vv:window.visualViewport?Math.round(visualViewport.height):null,vh:m('100vh'),lvh:m('100lvh'),dvh:m('100dvh'),svh:m('100svh')}}
+const vhTxt=v=>`screen ${v.screen}, innerHeight ${v.inner}, clientHeight ${v.client}, visualViewport ${v.vv}, 100vh ${v.vh}, 100lvh ${v.lvh}, 100dvh ${v.dvh}, 100svh ${v.svh}`;
+function layoutProbe(){
+ const v=vh(),ov=document.createElement('div'),cols=[['A','100%','#ff5a5a'],['B','100vh','#ffd54a'],['C','calc(100% + env(safe-area-inset-top,0px))','#5ae08a'],['D',screen.height+'px','#59b7ff']];
+ ov.innerHTML=cols.map(([l,h,c],i)=>`<div style="position:fixed;top:0;left:${i*25}%;width:25%;height:${h};background:${c};z-index:200"><b style="position:absolute;left:0;right:0;top:20%;text-align:center;font:800 40px/1 var(--display);color:#000">${l}</b></div>`).join('')+`<div style="position:fixed;left:16px;right:16px;top:32%;z-index:201;background:rgba(0,0,0,.88);color:#fff;border-radius:16px;padding:14px;font-size:14.5px;line-height:1.4">Look at the very bottom of the screen, where it curves. Which coloured columns reach all the way down? Close this and write the letters in the Layout note.<div class="small" style="margin-top:10px;color:#ccc">${esc(vhTxt(v))}</div><button class="primary" style="margin-top:12px" id="lpclose">Close</button></div>`;
+ document.body.appendChild(ov);document.getElementById('lpclose').onclick=()=>{ov.remove();render()};
+ const m=DT.manual.layout||(DT.manual.layout={});m.note=(m.note||'').replace(/ ?\[probe:[^\]]*\]/,'')+` [probe: ${vhTxt(v)}]`;saveDT()}
 const AUTO=[
  ['install','Opened from the home screen icon',async()=>{const sa=isStandalone();return{ok:sa,detail:sa?'Running as an installed app, full screen.':'Running in a browser tab. Open the app from its home screen icon and run again.'}}],
  ['wakelock','Wake Lock (screen stays on)',async()=>{if(!('wakeLock' in navigator))return{ok:false,detail:'Wake Lock API not available'};const l=await navigator.wakeLock.request('screen');const held=!l.released;await l.release();return{ok:held,detail:`A screen wake lock was ${held?'granted':'not held'}.${WL.at?` During the last workout: ${WL.ok?'granted':'failed: '+WL.err}.`:''}`}}],
@@ -737,7 +744,7 @@ const AUTO=[
  ['github','GitHub private repository',async()=>{if(!GHC)return{ok:false,detail:'Not connected'};const j=await ghRepo(GHC);const l=(await ghList('backups')).filter(f=>/.json$/.test(f.name));return{ok:!!j.private,detail:`${j.full_name} is ${j.private?'private':'PUBLIC – make it private!'}. ${l.length} backup file${l.length===1?'':'s'}.`}}],
  ['backup','Backup within the last 7 days',async()=>{const r=GHC&&navigator.onLine?await backup('device test'):{ok:false,msg:GHC?'Offline':'Not connected'};return{ok:r.ok&&!backupStale(),detail:`${r.msg}. Last success ${ago(BK.lastOk)}.`}}],
  ['share','File export (share sheet with files)',async()=>{let f;try{f=new File(['{}'],'t.json',{type:'application/json'})}catch(e){}const ok=!!(f&&navigator.canShare&&navigator.canShare({files:[f]}));return{ok,detail:`${ok?'Sharing files is supported.':'Sharing files is not supported; export falls back to a download.'} showSaveFilePicker: ${'showSaveFilePicker' in window?'present':'absent'}.${EXP.at?` Last export: ${EXP.ok===false?'failed '+EXP.err:EXP.ok===null?'cancelled':'done via '+EXP.how}.`:''}`}}],
- ['layout','Tab bar reaches the bottom, notch is clear',async()=>{const ins=insets(),tb=document.getElementById('tabs').getBoundingClientRect(),pane=document.getElementById('scroll').getBoundingClientRect(),H=window.innerHeight;const gap=Math.round(H-tb.bottom),short=Math.round(screen.height-H),ok=Math.abs(gap)<=1&&pane.top>=ins.t-0.5&&(!isStandalone()||ins.b>0);return{ok,detail:`Screen ${innerWidth}×${H}. Safe areas: top ${ins.t}, bottom ${ins.b}, left ${ins.l}, right ${ins.r}. Tab bar ends ${gap} px above the screen edge, content starts at ${Math.round(pane.top)} px. Device screen height ${screen.height}, app viewport ${short} px shorter${short>1&&isStandalone()?' (iOS quirk; that strip is painted in the tab bar colour)':''}. Check visually too.`}}],
+ ['layout','Tab bar reaches the bottom, notch is clear',async()=>{const ins=insets(),tb=document.getElementById('tabs').getBoundingClientRect(),pane=document.getElementById('scroll').getBoundingClientRect(),H=window.innerHeight;const gap=Math.round(H-tb.bottom),short=Math.round(screen.height-H),ok=Math.abs(gap)<=1&&pane.top>=ins.t-0.5&&(!isStandalone()||ins.b>0);return{ok,detail:`Screen ${innerWidth}×${H}. Safe areas: top ${ins.t}, bottom ${ins.b}, left ${ins.l}, right ${ins.r}. Tab bar ends ${gap} px above the screen edge, content starts at ${Math.round(pane.top)} px. Viewport ${short} px shorter than the screen. ${vhTxt(vh())}. Check visually and with the Layout probe.`}}],
  ['anim','Shaking Log PR button, frame rate',async()=>{const el=document.getElementById('animdemo');if(el){el.classList.remove('armpop');void el.offsetWidth;el.classList.add('armpop')}const r=await measureFrames(1500);return{ok:fpsOK(r),detail:fpsTxt(r)+'. Use the popup buttons below for the reward test.'}}],
  ['haptic','Haptic switch support',async()=>{const i=document.createElement('input');i.type='checkbox';i.setAttribute('switch','');const sw='switch' in i;return{ok:null,detail:`Switch control ${sw?'is supported (iOS 17.4 or later)':'is not detected'}. Vibration API: ${'vibrate' in navigator?'present':'absent'}. Feel test below.`}}],
  ['speech','Speech recognition API',async()=>{const has='SpeechRecognition' in window||'webkitSpeechRecognition' in window;return{ok:null,detail:`${has?'Present':'Absent'}. Not used; dictation uses the keyboard microphone.`}}],
@@ -753,10 +760,10 @@ const MAN=[
  ['backup','7. Backup','Finish a workout while online. Then open Settings: the last backup should say just now. On github.com, the gym-app-data repository should show a new file in backups.',[['Back up now','act:bknow']]],
  ['restore','8. Restore','Only after 7 passed: Settings › Export file and save it to Files as a second copy. Delete the app from the home screen (this deletes its data). Add it again from Safari, enter the token, choose Restore. Pass if workouts, meals and settings are back.'],
  ['export','9. File export','Tap Export, choose Save to Files, pick iCloud Drive. Pass if the file appears in the Files app and opens as readable text.',[['Export file','act:export']]],
- ['layout','10. Layout','Look at the bottom: the tab bar colour must reach the screen edge with no strip. Nothing may hide behind the notch or the home bar, on both Gym and Food and in sheets.'],
+ ['layout','10. Layout','Look at the bottom: the tab bar colour must reach the screen edge with no strip. Nothing may hide behind the notch or the home bar, on both Gym and Food and in sheets. Then tap Layout probe and write in the note which coloured columns (A, B, C, D) reach all the way down into the curved bottom edge.',[['Layout probe','act:probe']]],
  ['swipe','11. Swipe','Swipe left and right between Gym and Food, starting in the middle and near the edges. Scroll up and down. Pass if switching is easy and never fights vertical scrolling.'],
  ['anim','12. Animations','Play both popups. Pass if the photo smash, shake and confetti run smoothly, and the shaking Log PR button below looks fluid.',[['Weight PR popup','hype:weight'],['Rep PR popup','hype:rep']]],
- ['haptic','13. Haptics','First flip the visible switch to feel what a tick is like. Then tap Tick A, B, C and D one at a time and write in the note which ones tick, for example “B and D”. Pass if at least one ticks. Tick D is different: your finger lands on an invisible switch.',[['Tick A','act:hapA'],['Tick B','act:hapB'],['Tick C','act:hapC']]],
+ ['haptic','13. Haptics','Start a workout and tap Log set, and later Log PR. Pass if each tap gives a small tick. Tick D below uses the same method.'],
  ['wakelock','14. Screen stays on','Start a workout and leave the phone untouched for longer than your auto-lock time. Pass if the screen stays on.',[['Keep screen on now','act:wl']]]
 ];
 const badge=ok=>ok===true?'<span class="badge pass">PASS</span>':ok===false?'<span class="badge fail">FAIL</span>':ok==='run'?'<span class="badge">…</span>':ok===undefined?'<span class="badge">—</span>':'<span class="badge">INFO</span>';
@@ -876,7 +883,7 @@ const A={
  dtmark(el){const id=el.dataset.id,m=DT.manual[id]||(DT.manual[id]={});m.state=m.state===el.dataset.t?null:el.dataset.t;saveDT();render()},
  dtclear(){DT={auto:{},manual:{}};saveDT();render()},
  dtshare(){const txt=dtReport();if(navigator.share){navigator.share({title:'Gym app device test',text:txt}).catch(()=>{})}else if(navigator.clipboard){navigator.clipboard.writeText(txt).then(()=>toast('Results copied'))}},
- dttool(el){const[k,v]=el.dataset.t.split(':');if(k==='sheet'){sheet={s:v};render()}else if(k==='gotab'){S.tab=v;sheet=null;save();render()}else if(k==='hype')popupTest(v);else if(k==='act'){if(v==='hapA')hapt();else if(v==='hapB')hapB();else if(v==='hapC'){const i=document.getElementById('hapc');if(i)i.click()}else if(v==='wl'){if(!S.cur){toast('Start a workout first; the lock is held during workouts')}else{keepAwake().then(()=>toast(WL.ok?'Screen wake lock is on':'Wake lock failed: '+WL.err))}}else A[v](el)}}
+ dttool(el){const[k,v]=el.dataset.t.split(':');if(k==='sheet'){sheet={s:v};render()}else if(k==='gotab'){S.tab=v;sheet=null;save();render()}else if(k==='hype')popupTest(v);else if(k==='act'){if(v==='probe')layoutProbe();else if(v==='wl'){if(!S.cur){toast('Start a workout first; the lock is held during workouts')}else{keepAwake().then(()=>toast(WL.ok?'Screen wake lock is on':'Wake lock failed: '+WL.err))}}else A[v](el)}}
 };
 async function loadRestoreList(){try{const l=(await ghList('backups')).filter(f=>/\.json$/.test(f.name)).sort((a,b)=>b.name.localeCompare(a.name));if(sheet&&sheet.s==='restore'){sheet.list=l;render()}}catch(e){if(sheet&&sheet.s==='restore'){sheet.list=[];sheet.err=e.message;render()}}}
 function scrollEx(i){const el=document.getElementById('ex'+i),sc=paneEl();if(!el)return;const st=sc.querySelector('.status');const off=(st?st.offsetHeight:0)+6;sc.scrollTop+=el.getBoundingClientRect().top-sc.getBoundingClientRect().top-off}
