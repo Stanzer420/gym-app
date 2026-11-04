@@ -257,7 +257,7 @@ button:disabled{opacity:.45}
 
 <script>
 'use strict';
-const APP_VERSION='0.3.3';
+const APP_VERSION='0.3.4';
 /* ---------- personal data lives in the private repo; these are filled from local storage at start ---------- */
 let SPLIT=[],EX={},FOODS=[],SUPPS=[],MAINT=2500,BASE_MEALS=[],TEST_BC=[];
 const PHASES=[['cut','Lose fat',-400],['main','Maintain',0],['lean','Lean gain',250],['bulk','Bulk',500]];
@@ -390,7 +390,7 @@ function activeSet(x,t,si,i){
  return `<div class="active"><div class="beat"><span class="label">Set ${si+1}</span>${willPR?`<span class="need prsign ${pop}">This set is a PR</span>`:`<span class="need">Beat: ${setTxt(t.w,need,t.d)}</span>`}</div>
  <div class="steppers">${stepper('kg',wTxt(t.w),'w','wval')}${stepper(t.d!=null?'Total reps':'Reps',t.r,'r')}</div>
  ${t.d!=null?`<div class="steppers" style="align-items:end">${stepper('Drop to, kg',wTxt(t.d),'dw','dval')}<button class="ghost" style="min-height:62px" data-a="rmdrop">Remove drop</button></div>`:(t.w>0?`<button class="linkbtn" data-a="adddrop">Add drop set</button>`:'')}
- <label class="primary tickbtn ${willPR?'armbtn '+pop:''}" role="button" data-a="log" data-i="${i}" data-j="${si}">${willPR?'Log PR':'Log set'}<input type="checkbox" switch class="tickin" tabindex="-1" aria-hidden="true"></label></div>`;
+ <label class="primary tickbtn ${willPR?'armbtn '+pop:''}" role="button" data-a="log" data-i="${i}" data-j="${si}">${willPR?'Log PR':'Log set'}${TICKIN}</label></div>`;
 }
 
 /* ---------- food screens ---------- */
@@ -402,7 +402,7 @@ function foodHome(){
  const fits=m=>!m.weekdays||m.weekdays.includes(wd);
  const usual=S.meals.filter(m=>m.usual&&fits(m)&&!logged.has(m.id));
  const saved=S.meals.filter(m=>(!m.usual||!fits(m))&&!logged.has(m.id));
- const mrow=m=>{const x=macros(m.items);return `<div class="usual"><button class="main" data-a="logmeal" data-m="${m.id}"><span style="min-width:0"><span class="t" style="font-weight:600;display:block">${esc(m.n)}</span><span class="small">${esc(m.sub||'')}</span></span><span class="plus">+ ${int(x.k)}</span></button><button class="edit" data-a="mealopen" data-m="${m.id}" aria-label="Adjust ${esc(m.n)}">${I.edit}</button></div>`};
+ const mrow=m=>{const x=macros(m.items);return `<div class="usual"><label class="main tickbtn" role="button" data-a="logmeal" data-m="${m.id}"><span style="min-width:0"><span class="t" style="font-weight:600;display:block">${esc(m.n)}</span><span class="small">${esc(m.sub||'')}</span></span><span class="plus">+ ${int(x.k)}</span>${TICKIN}</label><button class="edit" data-a="mealopen" data-m="${m.id}" aria-label="Adjust ${esc(m.n)}">${I.edit}</button></div>`};
  const mac=(lbl,v,goal,min)=>{const ok=min&&v>=goal;return `<div><span class="label">${lbl}</span><span class="v">${int(v)}<small> / ${goal} g</small></span><div class="bar ${ok?'ok':''}"><i style="width:${Math.min(100,v/goal*100)}%"></i></div>${min?`<span class="${ok?'ok-t':'small'}" style="font-size:12px">${ok?'Goal reached':`${int(goal-v)} g to minimum`}</span>`:''}</div>`};
  return `<div class="wrap">${topbar('Food','foodstats')}<div class="warnslot">${warnHTML()}</div>
  <section class="macro">
@@ -496,11 +496,11 @@ const SH={
   <div class="field"><label class="label" for="bcin">Or type the barcode number</label><div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px"><input class="input" id="bcin" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="8 to 13 digits" enterkeyhint="search"><button class="ghost" data-a="bclook">Look up</button></div></div>
   <label class="ghost" for="scanfile">Take a photo of the barcode instead</label><input type="file" id="scanfile" class="vh" accept="image/*" capture="environment"></div>`},
  amount(){const f=food(sheet.food),a=sheet.amt,m=macros([[f.id,a]]);return head(f.n,'add')+`<div class="sbody"><div>${tagNote(f)}</div><div class="field">${stepper('Amount, '+(f.u==='pc'?'pieces':f.u),fmt(a),'amt','amtval')}</div>${totalsHTML(m)}
-  ${draft?`<button class="primary" data-a="todraft">Add to ${esc(draft.name||'new meal')}</button>`:`<button class="primary" data-a="logfood">Log for today</button><button class="ghost" data-a="draftwith">Start a new meal with this</button>`}</div>`},
+  ${draft?`<button class="primary" data-a="todraft">Add to ${esc(draft.name||'new meal')}</button>`:`<label class="primary tickbtn" role="button" data-a="logfood">Log for today${TICKIN}</label><button class="ghost" data-a="draftwith">Start a new meal with this</button>`}</div>`},
  meal(){const m=S.meals.find(x=>x.id===sheet.meal),items=sheet.items,tot=macros(items);return head(m.n)+`<div class="sbody">${totalsHTML(tot)}
   ${m.batch?`<p class="callout" style="margin:0">Amounts are per portion. Whole batch of ${m.batch}: ${m.items.map(([id,a])=>{const f=food(id);return f.u==='pc'?`${fmt(a*m.batch)} × ${f.n}`:`${fmt(a*m.batch)} ${f.u} ${f.n}`}).join(', ')}.</p>`:''}
   <div>${items.map(([id,a],i)=>{const f=food(id);return `<div class="item"><div class="tt"><span>${esc(f.n)}</span><span>${f.tag==='placeholder'?'<span class="sample">Placeholder</span>':''}</span></div><div class="stpc"><button data-a="mi" data-i="${i}" data-d="-1" aria-label="Less">−</button><div class="val">${amtTxt(f,a)}</div><button data-a="mi" data-i="${i}" data-d="1" aria-label="More">+</button></div></div>`}).join('')}</div>
-  <button class="primary" data-a="logadj">Log for today</button><button class="ghost" data-a="savemeal">Keep these amounts for next time</button>
+  <label class="primary tickbtn" role="button" data-a="logadj">Log for today${TICKIN}</label><button class="ghost" data-a="savemeal">Keep these amounts for next time</button>
   ${!BASE_MEALS.includes(m.id)?`<button class="linkbtn" data-a="delmeal">Delete this meal</button>`:''}</div>`},
  compose(){const m=macros(draft.items);return head('New meal','add')+`<div class="sbody"><div class="field"><label class="label" for="dname">Meal name</label><input class="input" id="dname" placeholder="Linsen-Dal" value="${esc(draft.name||'')}" autocomplete="off"></div>${totalsHTML(m)}
   <div>${draft.items.map(([id,a],i)=>{const f=food(id);return `<div class="item"><div class="tt"><span>${esc(f.n)}</span><button class="small" style="text-decoration:underline;min-height:28px" data-a="dri" data-i="${i}">Remove</button></div><div class="stpc"><button data-a="dr" data-i="${i}" data-d="-1" aria-label="Less">−</button><div class="val">${amtTxt(f,a)}</div><button data-a="dr" data-i="${i}" data-d="1" aria-label="More">+</button></div></div>`}).join('')||'<p class="small">Add the first ingredient.</p>'}</div>
@@ -552,7 +552,7 @@ function resultsHTML(q){
  if(fs.length)h+=`<div class="sect" style="margin-top:16px"><span class="label">Foods</span><div class="list">${fs.slice(0,30).map(f=>`<button class="line" data-a="foodopen" data-f="${f.id}"><span style="min-width:0"><span class="t" style="display:block">${esc(f.n)}</span><span class="small">${f.u==='pc'?'per piece':'per 100 '+f.u} · ${fmt(f.p||0)} g protein</span></span><span class="plus">${int(f.k||0)}</span></button>`).join('')}</div></div>`;
  if(n){
   const o=sheet&&sheet.off&&sheet.off.q===n?sheet.off:null;
-  h+=`<div class="sect" style="margin-top:16px"><span class="label">Open Food Facts</span>${!o?`<button class="ghost" data-a="offsearch">Search Open Food Facts for “${esc(q.trim())}”</button>`:o.busy?'<p class="small" style="margin:0">Searching …</p>':o.err?`<p class="callout bad" style="margin:0">${esc(o.err)}</p><button class="ghost" data-a="offsearch">Try again</button>`:o.list.length?`<div class="list">${o.list.map((f,i)=>`<button class="line" data-a="offpick" data-i="${i}"><span style="min-width:0"><span class="t" style="display:block">${esc(f.n)}</span><span class="small">per 100 ${f.u} · ${f.p==null?'protein missing':fmt(f.p)+' g protein'}</span></span><span class="plus">${f.k==null?'?':int(f.k)}</span></button>`).join('')}</div>`:'<p class="small" style="margin:0">No products found.</p>'}</div>`;
+  h+=`<div class="sect" style="margin-top:16px"><span class="label">Open Food Facts</span>${!o?`<button class="ghost" data-a="offsearch">Search Open Food Facts for “${esc(q.trim())}”</button>`:o.busy?`<p class="small" style="margin:0">${o.try>1?`Open Food Facts is busy, trying again (${o.try} of ${o.max}) …`:'Searching …'}</p>`:o.err?`<p class="callout bad" style="margin:0">${esc(o.err)}</p><button class="ghost" data-a="offsearch">Try again</button>`:o.list.length?`<div class="list">${o.list.map((f,i)=>`<button class="line" data-a="offpick" data-i="${i}"><span style="min-width:0"><span class="t" style="display:block">${esc(f.n)}</span><span class="small">per 100 ${f.u} · ${f.p==null?'protein missing':fmt(f.p)+' g protein'}</span></span><span class="plus">${f.k==null?'?':int(f.k)}</span></button>`).join('')}</div>`:'<p class="small" style="margin:0">No products found.</p>'}</div>`;
   h+=`<button class="ghost" style="width:100%;margin-top:14px" data-a="newfood">Create “${esc(q)}”</button>`;
  }
  return h;
@@ -560,11 +560,12 @@ function resultsHTML(q){
 function dictHTML(q){
  if(!q.trim())return '<p class="small" style="margin:0">Try: 200 g Skyr, 2 Eier und 1 Banane</p>';
  const r=parseSpoken(q),ok=r.filter(x=>x.food),items=ok.map(x=>[x.food.id,x.amt]),m=macros(items);
- return `<div class="list">${r.map(x=>x.food?`<div class="line"><span>${esc(x.food.n)}</span><span class="num" style="font-size:17px;font-weight:600;white-space:nowrap">${amtTxt(x.food,x.amt)}</span></div>`:`<div class="line"><span class="small">Not recognised: ${esc(x.raw)}</span></div>`).join('')}</div>${ok.length?`<div style="margin-top:14px;display:flex;flex-direction:column;gap:12px">${totalsHTML(m)}<button class="primary" data-a="logdict">Confirm and log</button></div>`:''}`;
+ return `<div class="list">${r.map(x=>x.food?`<div class="line"><span>${esc(x.food.n)}</span><span class="num" style="font-size:17px;font-weight:600;white-space:nowrap">${amtTxt(x.food,x.amt)}</span></div>`:`<div class="line"><span class="small">Not recognised: ${esc(x.raw)}</span></div>`).join('')}</div>${ok.length?`<div style="margin-top:14px;display:flex;flex-direction:column;gap:12px">${totalsHTML(m)}<label class="primary tickbtn" role="button" data-a="logdict">Confirm and log${TICKIN}</label></div>`:''}`;
 }
 
 /* ---------- reward popups ---------- */
 const PICPOS={'ruhl-1':'63% 30%','ruhl-2':'50% 8%','ruhl-3':'42% 0%','ruhl-4':'60% 8%','ruhl-5':'40% 8%','coleman-1':'50% 8%','coleman-2':'50% 18%','coleman-3':'48% 0%','coleman-4':'38% 30%','coleman-5':'35% 0%'};
+const TICKIN='<input type="checkbox" switch class="tickin" tabindex="-1" aria-hidden="true">';
 const hapt=()=>{try{document.getElementById('hap').click()}catch(e){}if(navigator.vibrate)navigator.vibrate([40,30,120,40,60])};
 let PICS={ruhl:[],coleman:[]};
 const HYPE={protein:{set:'ruhl',kicker:'Protein goal',btn:'Des Bedarfs'},weight:{set:'coleman',kicker:'Weight PR',btn:'Lightweight, baby!'},rep:{set:'ruhl',kicker:'Rep PR',btn:'Drück, du Sau!'}};
@@ -647,21 +648,30 @@ function offToFood(p){const n=p.nutriments||{};let k=numv(n['energy-kcal_100g'])
  return{id:'off'+p.code,n:brand&&!name.toLowerCase().includes(brand.toLowerCase())?`${name} (${brand})`:name,a:[name.toLowerCase()],u:/\d\s*(ml|cl|l)\b/i.test(p.quantity||'')?'ml':'g',k:k==null?null:Math.round(k),p:r1(numv(n.proteins_100g)),c:r1(numv(n.carbohydrates_100g)),f:r1(numv(n.fat_100g)),tag:'off',bc:String(p.code||''),qty:p.quantity||'',note}}
 async function cacheGet(k,maxAge){try{const v=await DB.get('off',k);if(v&&Date.now()-v.at<maxAge)return v.data}catch(e){}return undefined}
 const cachePut=(k,data)=>DB.set('off',k,{at:Date.now(),data}).catch(()=>{});
+/* The search server turns away about half of all requests (HTTP 503) when busy, and that answer has no CORS header,
+   so the browser only sees a failed fetch. Both cases are retried up to 5 times over about 20 s. */
+const OFFI={};
+async function offGet(url,kind,onTry){const waits=[0,2000,4000,6000,8000];let why='';
+ for(let a=0;a<waits.length;a++){
+  if(a){if(onTry)onTry(a+1,waits.length);await new Promise(r=>setTimeout(r,waits[a]))}
+  if(!a)take(kind);OFFI[kind]=a+1; /* only the first try counts against the per-minute limit; rejected tries are not served */
+  const ac=new AbortController(),t=setTimeout(()=>ac.abort(),12000);let r;
+  try{r=await fetch(url,{signal:ac.signal})}catch(e){clearTimeout(t);why=e.name==='AbortError'?'timeout':'no answer';continue}
+  clearTimeout(t);
+  if(r.status===404)return null;
+  if([429,500,502,503,504].includes(r.status)){why='HTTP '+r.status;continue}
+  if(!r.ok)throw new Error('Open Food Facts error, HTTP '+r.status);
+  try{return await r.json()}catch(e){why='unreadable answer';continue}}
+ const err=new Error(`Open Food Facts is overloaded right now (${waits.length} tries, last: ${why}). Try again in a minute, or type the values from the package.`);err.busy=true;throw err}
 async function offProduct(code,fresh){
  if(!fresh){const c=await cacheGet('p:'+code,30*864e5);if(c)return c}
  if(!navigator.onLine)throw new Error('Offline, so the product cannot be looked up. Type the values from the package.');
- take('p');
- let r;try{r=await fetch(OFF_P+encodeURIComponent(code)+'.json?fields='+OFF_FIELDS)}catch(e){throw new Error('Open Food Facts did not answer. Type the values from the package.')}
- if(r.status===404)return null;
- if(!r.ok)throw new Error(r.status===429||r.status===503?'Open Food Facts is busy. Try again in a minute.':'Open Food Facts error, HTTP '+r.status);
- let j;try{j=await r.json()}catch(e){throw new Error('Open Food Facts sent an unreadable answer')}
- const p=j.product?offToFood(Object.assign({code},j.product)):null;if(p)cachePut('p:'+code,p);return p}
-async function offSearch(q){const key='s:'+q.toLowerCase().trim();const c=await cacheGet(key,864e5);if(c)return c;
- if(!navigator.onLine)throw new Error('Offline. Search works again when you are online.');take('s');
- let r;try{r=await fetch(OFF_S+'?search_terms='+encodeURIComponent(q)+'&search_simple=1&action=process&json=1&page_size=20&fields='+OFF_FIELDS)}catch(e){throw new Error('Open Food Facts did not answer')}
- if(!r.ok)throw new Error(r.status===429||r.status===503?'Open Food Facts search is busy. Try again in a minute.':'Open Food Facts error, HTTP '+r.status);
- let j;try{j=await r.json()}catch(e){throw new Error('Open Food Facts search is temporarily unavailable. Try again later.')}
- const out=(j.products||[]).filter(p=>p.code).map(offToFood);cachePut(key,out);return out}
+ const j=await offGet(OFF_P+encodeURIComponent(code)+'.json?fields='+OFF_FIELDS,'p');
+ const p=j&&j.product?offToFood(Object.assign({code},j.product)):null;if(p)cachePut('p:'+code,p);return p}
+async function offSearch(q,onTry,fresh){const key='s:'+q.toLowerCase().trim();const c=fresh?undefined:await cacheGet(key,864e5);if(c){OFFI.s=0;return c}
+ if(!navigator.onLine)throw new Error('Offline. Search works again when you are online.');
+ const j=await offGet(OFF_S+'?search_terms='+encodeURIComponent(q)+'&search_simple=1&action=process&json=1&page_size=20&fields='+OFF_FIELDS,'s',onTry);
+ const out=((j&&j.products)||[]).filter(p=>p.code).map(offToFood);cachePut(key,out);return out}
 const missingVals=p=>['k','p','c','f'].some(k=>p[k]==null);
 async function lookupCode(code){
  code=String(code).replace(/\D/g,'');if(code.length<8){scanMsg('A barcode has 8 to 14 digits.');return}
@@ -742,7 +752,7 @@ const AUTO=[
  ['zxing','Barcode decoder (zxing-wasm)',async()=>{const t0=performance.now();const z=await zx();const t1=performance.now();const code=TEST_BC[1]||TEST_BC[0]||'4006381333931';const cv=drawEAN13(code);const r=await z.readBarcodes(cv.getContext('2d').getImageData(0,0,cv.width,cv.height),ZXOPT);const got=(r.find(x=>x.isValid)||{}).text;return{ok:got===code,detail:`Loaded in ${Math.round(t1-t0)} ms. Test barcode ${code} decoded as ${got||'nothing'}. Native BarcodeDetector: ${'BarcodeDetector' in window?'present':'absent'}.`}}],
  ['camera','Camera API',async()=>{const ok=!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia);let cams='';try{const ds=await navigator.mediaDevices.enumerateDevices();cams=` ${ds.filter(d=>d.kind==='videoinput').length} cameras listed.`}catch(e){}return{ok,detail:(ok?'getUserMedia is available.':'getUserMedia is missing.')+cams+(CAM.at?` Last scan session: ${CAM.ok?'camera started':'failed: '+CAM.err}${CAM.size?', '+CAM.size:''}${CAM.frames?', '+CAM.frames+' frames read':''}${CAM.code?', found '+CAM.code+' after '+Math.round(CAM.ms/100)/10+' s':''}.`:' Use the hands-on scan test for the live camera.')}}],
  ['offprod','Open Food Facts barcode lookup',async()=>{const code=TEST_BC[0]||'3017620422003';const p=await offProduct(code,true);return{ok:!!p,detail:p?`${code}: ${p.n}. Per 100 ${p.u}: ${p.k??'?'} kcal, ${p.p??'?'} g protein, ${p.c??'?'} g carbs, ${p.f??'?'} g fat.`:`${code} not found`}}],
- ['offsearch','Open Food Facts text search (German products)',async()=>{const l=await offSearch('tofu natur');return{ok:l.length>0,detail:`${l.length} results for “tofu natur”${l[0]?', first: '+l[0].n:''}. Results are cached for a day.`}}],
+ ['offsearch','Open Food Facts text search (German products)',async()=>{const out=[];let ok=true;for(const q of ['Kinderriegel','Mehl']){try{const l=await offSearch(q,null,true);ok=ok&&l.length>0;out.push(`“${q}”: ${l.length} results${l[0]?', first: '+l[0].n:''}, ${OFFI.s} ${OFFI.s===1?'try':'tries'}`)}catch(e){ok=false;out.push(`“${q}”: ${e.message}`)}}return{ok,detail:`Two searches in a row, live (not from the cache). ${out.join('. ')}. The search server often turns requests away, so the app retries up to 5 times.`}}],
  ['github','GitHub private repository',async()=>{if(!GHC)return{ok:false,detail:'Not connected'};const j=await ghRepo(GHC);const l=(await ghList('backups')).filter(f=>/.json$/.test(f.name));return{ok:!!j.private,detail:`${j.full_name} is ${j.private?'private':'PUBLIC – make it private!'}. ${l.length} backup file${l.length===1?'':'s'}.`}}],
  ['backup','Backup within the last 7 days',async()=>{const r=GHC&&navigator.onLine?await backup('device test'):{ok:false,msg:GHC?'Offline':'Not connected'};return{ok:r.ok&&!backupStale(),detail:`${r.msg}. Last success ${ago(BK.lastOk)}.`}}],
  ['share','File export (share sheet with files)',async()=>{let f;try{f=new File(['{}'],'t.json',{type:'application/json'})}catch(e){}const ok=!!(f&&navigator.canShare&&navigator.canShare({files:[f]}));return{ok,detail:`${ok?'Sharing files is supported.':'Sharing files is not supported; export falls back to a download.'} showSaveFilePicker: ${'showSaveFilePicker' in window?'present':'absent'}.${EXP.at?` Last export: ${EXP.ok===false?'failed '+EXP.err:EXP.ok===null?'cancelled':'done via '+EXP.how}.`:''}`}}],
@@ -765,7 +775,7 @@ const MAN=[
  ['layout','10. Layout','Look at the bottom: the tab bar colour must reach the screen edge with no strip. Nothing may hide behind the notch or the home bar, on both Gym and Food and in sheets. Then tap Layout probe and write in the note which coloured columns (A, B, C, D) reach all the way down into the curved bottom edge.',[['Layout probe','act:probe']]],
  ['swipe','11. Swipe','Swipe left and right between Gym and Food, starting in the middle and near the edges. Scroll up and down. Pass if switching is easy and never fights vertical scrolling.'],
  ['anim','12. Animations','Play both popups. Pass if the photo smash, shake and confetti run smoothly, and the shaking Log PR button below looks fluid.',[['Weight PR popup','hype:weight'],['Rep PR popup','hype:rep']]],
- ['haptic','13. Haptics','Start a workout and tap Log set, and later Log PR. Pass if each tap gives a small tick. Tick D below uses the same method.'],
+ ['haptic','13. Haptics','Start a workout and tap Log set, and later Log PR. In Food, tap a usual meal, Log for today, or Confirm and log after dictation. Pass if each tap gives a small tick. Tick D below uses the same method.'],
  ['wakelock','14. Screen stays on','Start a workout and leave the phone untouched for longer than your auto-lock time. Pass if the screen stays on.',[['Keep screen on now','act:wl']]]
 ];
 const badge=ok=>ok===true?'<span class="badge pass">PASS</span>':ok===false?'<span class="badge fail">FAIL</span>':ok==='run'?'<span class="badge">…</span>':ok===undefined?'<span class="badge">—</span>':'<span class="badge">INFO</span>';
@@ -783,9 +793,12 @@ function devtestHTML(){
   <input class="input" data-dtnote="${id}" placeholder="Note (what happened)" value="${esc(m.note||'')}" autocomplete="off"></div>`}).join('')}
  <button class="primary" data-a="dtshare">Share results</button><button class="linkbtn" data-a="dtclear">Clear results</button>`}
 const saveDT=()=>DB.set('kv','devtest',{auto:DT.auto,manual:DT.manual}).catch(()=>{});
-async function runAuto(){DT.running=true;render();for(const [id,,fn] of AUTO){DT.auto[id]={ok:'run',detail:'Running …'};updDT();try{const r=await Promise.race([fn(),new Promise((_,rej)=>setTimeout(()=>rej(new Error('timed out after 20 s')),20000))]);DT.auto[id]=Object.assign(r,{at:Date.now()})}catch(e){DT.auto[id]={ok:false,detail:'Error: '+(e.message||e),at:Date.now()}}updDT()}DT.running=false;saveDT();if(sheet&&sheet.s==='devtest')render()}
+async function runAuto(){DT.running=true;render();for(const [id,,fn] of AUTO){DT.auto[id]={ok:'run',detail:'Running …'};updDT();try{const r=await Promise.race([fn(),new Promise((_,rej)=>setTimeout(()=>rej(new Error('timed out after 90 s')),90000))]);DT.auto[id]=Object.assign(r,{at:Date.now(),v:APP_VERSION})}catch(e){DT.auto[id]={ok:false,detail:'Error: '+(e.message||e),at:Date.now(),v:APP_VERSION}}updDT()}DT.running=false;saveDT();if(sheet&&sheet.s==='devtest')render()}
 function updDT(){if(!sheet||sheet.s!=='devtest')return;const rows=document.querySelectorAll('#sheet .trow');AUTO.forEach(([id,name],i)=>{const r=DT.auto[id],el=rows[i];if(el)el.innerHTML=`${badge(r?r.ok:undefined)}<div class="tx"><div style="font-weight:600">${esc(name)}</div>${r?`<div class="small">${esc(r.detail)}</div>`:''}</div>`})}
-function dtReport(){const L=[`Gym app device test, version ${APP_VERSION}, ${new Date().toLocaleString('en-GB')}`,navigator.userAgent,isStandalone()?'Opened from home screen':'Opened in browser','','Automatic checks:'];AUTO.forEach(([id,name])=>{const r=DT.auto[id];L.push(`${r?r.ok===true?'PASS':r.ok===false?'FAIL':'INFO':'NOT RUN'}  ${name}${r?': '+r.detail:''}`)});L.push('','Hands-on tests:');MAN.forEach(([id,title])=>{const m=DT.manual[id]||{};L.push(`${m.state?m.state.toUpperCase():'NOT TESTED'}  ${title}${m.note?': '+m.note:''}`)});return L.join('\n')}
+function dtReport(){const L=[`Gym app device test, version ${APP_VERSION}, ${new Date().toLocaleString('en-GB')}`,navigator.userAgent,isStandalone()?'Opened from home screen':'Opened in browser','','Automatic checks:'];
+ /* every result says which app version and time it came from, so old results are not mistaken for new ones */
+ const stamp=x=>x&&(x.at||x.v)?` [${x.v||'before 0.3.4'}${x.at?', '+new Date(x.at).toLocaleString('en-GB',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):''}${x.v===APP_VERSION?'':', OLD VERSION'}]`:'';
+ AUTO.forEach(([id,name])=>{const r=DT.auto[id];L.push(`${r?r.ok===true?'PASS':r.ok===false?'FAIL':'INFO':'NOT RUN'}  ${name}${r?': '+r.detail+stamp(r):''}`)});L.push('','Hands-on tests:');MAN.forEach(([id,title])=>{const m=DT.manual[id]||{};L.push(`${m.state?m.state.toUpperCase():'NOT TESTED'}  ${title}${m.note?': '+m.note:''}${m.state||m.note?stamp(m):''}`)});return L.join('\n')}
 async function popupTest(kind){hype(kind,kind==='weight'?'Test popup · Weight PR':'Test popup · Rep PR');const r=await measureFrames(1300);DT.auto.popup={ok:fpsOK(r),detail:fpsTxt(r),at:Date.now()};const m=DT.manual.anim||(DT.manual.anim={});m.note=(m.note?m.note.replace(/ ?\[popup:[^\]]*\]/,''):'')+` [popup: ${r.fps} fps, ${r.long} slow frames]`;saveDT()}
 
 /* ---------- render ---------- */
@@ -860,7 +873,7 @@ const A={
  savefood(){const p=sheet.pre||{};const g=id=>{const t=(document.getElementById(id).value||'').trim().replace(',','.');return t===''||isNaN(parseFloat(t))?null:parseFloat(t)};const n=document.getElementById('nfn').value.trim();if(!n){toast('Enter a name first');return}const v={k:g('nfk'),p:g('nfp'),c:g('nfc'),f:g('nff')};const miss=Object.values(v).some(x=>x==null);
   const f={id:p.id||('f'+Date.now()),n,a:[n.toLowerCase()],u:p.u||'g',k:v.k||0,p:v.p||0,c:v.c||0,f:v.f||0,tag:p.tag==='off'?'off':'own'};if(p.bc)f.bc=p.bc;
   S.foods=S.foods.filter(x=>x.id!==f.id);S.foods.push(f);save();sheet={s:'amount',food:f.id,amt:100};render();if(miss)toast('Empty values were saved as 0')},
- offsearch(){const q=(sheet.q||'').trim();if(!q)return;const n=q.toLowerCase();sheet.off={q:n,busy:true};document.getElementById('results').innerHTML=resultsHTML(sheet.q);offSearch(q).then(l=>{if(sheet&&sheet.off&&sheet.off.q===n){sheet.off={q:n,list:l};const r=document.getElementById('results');if(r)r.innerHTML=resultsHTML(sheet.q)}}).catch(e=>{if(sheet&&sheet.off&&sheet.off.q===n){sheet.off={q:n,err:e.message};const r=document.getElementById('results');if(r)r.innerHTML=resultsHTML(sheet.q)}})},
+ offsearch(){const q=(sheet.q||'').trim();if(!q)return;const n=q.toLowerCase();sheet.off={q:n,busy:true};document.getElementById('results').innerHTML=resultsHTML(sheet.q);offSearch(q,(a,max)=>{if(sheet&&sheet.off&&sheet.off.q===n&&sheet.off.busy){sheet.off.try=a;sheet.off.max=max;const r=document.getElementById('results');if(r)r.innerHTML=resultsHTML(sheet.q)}}).then(l=>{if(sheet&&sheet.off&&sheet.off.q===n){sheet.off={q:n,list:l};const r=document.getElementById('results');if(r)r.innerHTML=resultsHTML(sheet.q)}}).catch(e=>{if(sheet&&sheet.off&&sheet.off.q===n){sheet.off={q:n,err:e.message};const r=document.getElementById('results');if(r)r.innerHTML=resultsHTML(sheet.q)}})},
  offpick(el){const p=sheet.off.list[+el.dataset.i];const own=S.foods.find(f=>f.id===p.id);if(own){sheet={s:'amount',food:own.id,amt:100};render();return}sheet={s:'newfood',pre:Object.assign({},p),why:missingVals(p)?'Some values are missing on Open Food Facts. Check the package and fill them in.':'From Open Food Facts. Check the values against the package, then save.'};render()},
  bclook(){const v=document.getElementById('bcin').value;lookupCode(v)},
  logdict(){const r=parseSpoken(sheet.q).filter(x=>x.food);const d=day();const before=d.entries.length;r.forEach(x=>addEntry(x.food.n,[[x.food.id,x.amt]]));save();sheet=null;render();toast(`${r.length} item${r.length>1?'s':''} logged`,()=>{d.entries.length=before;save();render()})},
@@ -882,7 +895,7 @@ const A={
  suseed(){finishSetup(stateFromCfg(cfgFromSeed(SU.seed)),true)},
  /* device test */
  dtrun(){if(!DT.running)runAuto()},
- dtmark(el){const id=el.dataset.id,m=DT.manual[id]||(DT.manual[id]={});m.state=m.state===el.dataset.t?null:el.dataset.t;saveDT();render()},
+ dtmark(el){const id=el.dataset.id,m=DT.manual[id]||(DT.manual[id]={});m.state=m.state===el.dataset.t?null:el.dataset.t;m.v=APP_VERSION;m.at=Date.now();saveDT();render()},
  dtclear(){DT={auto:{},manual:{}};saveDT();render()},
  dtshare(){const txt=dtReport();if(navigator.share){navigator.share({title:'Gym app device test',text:txt}).catch(()=>{})}else if(navigator.clipboard){navigator.clipboard.writeText(txt).then(()=>toast('Results copied'))}},
  dttool(el){const[k,v]=el.dataset.t.split(':');if(k==='sheet'){sheet={s:v};render()}else if(k==='gotab'){S.tab=v;sheet=null;save();render()}else if(k==='hype')popupTest(v);else if(k==='act'){if(v==='probe')layoutProbe();else if(v==='wl'){if(!S.cur){toast('Start a workout first; the lock is held during workouts')}else{keepAwake().then(()=>toast(WL.ok?'Screen wake lock is on':'Wake lock failed: '+WL.err))}}else A[v](el)}}
@@ -904,7 +917,7 @@ document.addEventListener('input',e=>{const t=e.target;
  if(t.id==='dict'){sheet.q=t.value;document.getElementById('dres').innerHTML=dictHTML(t.value)}
  if(t.id==='dname'&&draft)draft.name=t.value;
  if(t.dataset.note){S.notes=S.notes||{};S.notes[t.dataset.note]=t.value;save()}
- if(t.dataset.dtnote){const m=DT.manual[t.dataset.dtnote]||(DT.manual[t.dataset.dtnote]={});m.note=t.value;saveDT()}});
+ if(t.dataset.dtnote){const m=DT.manual[t.dataset.dtnote]||(DT.manual[t.dataset.dtnote]={});m.note=t.value;m.v=APP_VERSION;m.at=Date.now();saveDT()}});
 document.addEventListener('keydown',e=>{if(e.key!=='Enter')return;const t=e.target;if(t.id==='bcin'){e.preventDefault();lookupCode(t.value)}if(t.id==='q'&&t.value.trim()){e.preventDefault();t.blur();A.offsearch()}});
 document.addEventListener('change',e=>{const t=e.target,num=parseFloat(String(t.value).replace(',','.'));
  if(t.id==='wval'){const c=curSet();c.t.w=isNaN(num)?0:Math.max(0,num);if(c.t.w===0)c.t.d=undefined;clampD(c.t);propagate(c.x);save();render()}
