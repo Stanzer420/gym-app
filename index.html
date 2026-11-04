@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Gym">
-<meta name="theme-color" content="#0A0B18">
+<meta name="theme-color" content="#3E3F97" id="themecolor">
 <meta name="format-detection" content="telephone=no">
 <style>[hidden]{display:none!important}body{margin:0}</style>
 <style>
@@ -19,6 +19,8 @@
   --body:-apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,'Segoe UI',Roboto,sans-serif;
   --r-l:22px;--r-m:16px;--r-s:12px;
   --panel:rgba(255,255,255,.075);--panel2:rgba(255,255,255,.09);--line:rgba(255,255,255,.11);--well:rgba(0,0,0,.34);--ink:#F4F2F8;--mute:#ACA8B8;--good:#6FE3A5;--warn:#FFD479;--bad:#FF7A7A;
+  /* bottom spacing for the home bar; reduced by --vgap when iOS already leaves a strip below the app (it does on iPhone home screen apps) */
+  --sab:max(0px,calc(env(safe-area-inset-bottom,0px) - var(--vgap,0px)));
   --tabbg:#3E3F97;--bg:#0A0B18;--glow:#2D2E8E;--acc:#8F8BFF;--on:#0C0B33;--acc-a:rgba(143,139,255,.45);
 }
 [data-sec="gym"]{--mute:#ACA8B8;--tabbg:#3E3F97}
@@ -56,7 +58,7 @@ button:disabled{opacity:.45}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .vh{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none}
 /* tabs */
-#tabs{flex:none;position:relative;background:linear-gradient(rgba(255,255,255,.08),rgba(255,255,255,.08)),var(--glow);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+#tabs{flex:none;position:relative;background:linear-gradient(rgba(255,255,255,.08),rgba(255,255,255,.08)),var(--glow);border-top:1px solid var(--line);padding-bottom:var(--sab)}
 #tabs::after{content:"";position:absolute;left:0;right:0;top:100%;height:120px;background:var(--tabbg);pointer-events:none}
 #tabbtn{display:grid;grid-template-columns:1fr 1fr}
 #tabind{position:absolute;top:-1px;left:0;width:50%;height:3px;background:#fff;transition:transform .3s cubic-bezier(.22,.8,.25,1);z-index:1}
@@ -154,7 +156,7 @@ button:disabled{opacity:.45}
 .supp{min-height:46px;background:var(--panel);border-radius:var(--r-s);display:flex;align-items:center;justify-content:center;text-align:center;font-weight:600;font-size:13.5px;color:var(--mute);padding:2px}
 .supp.on{background:var(--acc);color:var(--on)}
 /* sheet */
-#sheet{position:fixed;inset:0;z-index:30;background:linear-gradient(to top,var(--glow),var(--bg) 74%);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+#sheet{position:fixed;inset:0;z-index:30;background:linear-gradient(to top,var(--glow),var(--bg) 74%);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px);padding-bottom:var(--sab)}
 .shead{flex:none;display:flex;align-items:center;gap:10px;padding:10px max(16px,env(safe-area-inset-right,0px)) 8px max(16px,env(safe-area-inset-left,0px));max-width:560px;width:100%;margin:0 auto}
 .shead h2{font:700 24px/1.1 var(--body);margin:0;flex:1;min-width:0}
 .sbody{flex:1;min-height:0;overflow-y:auto;width:100%;max-width:560px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:10px 28px;display:flex;flex-direction:column;gap:16px}
@@ -184,7 +186,7 @@ button:disabled{opacity:.45}
 .look{display:flex;align-items:center;gap:12px;background:var(--panel);border-radius:var(--r-m);padding:12px 14px;min-height:54px;width:100%}
 .look.on{box-shadow:inset 0 0 0 2px var(--ink)}
 .swatch{width:46px;height:34px;border-radius:11px;flex:none}
-#toast{position:fixed;left:16px;right:16px;bottom:calc(64px + env(safe-area-inset-bottom,0px));z-index:80;background:var(--ink);color:var(--bg);display:flex;justify-content:space-between;align-items:center;gap:10px;padding:0 16px;min-height:50px;font-weight:600;max-width:528px;margin:0 auto;border-radius:var(--r-m);box-shadow:0 8px 24px rgba(0,0,0,.4)}
+#toast{position:fixed;left:16px;right:16px;bottom:calc(64px + var(--sab));z-index:80;background:var(--ink);color:var(--bg);display:flex;justify-content:space-between;align-items:center;gap:10px;padding:0 16px;min-height:50px;font-weight:600;max-width:528px;margin:0 auto;border-radius:var(--r-m);box-shadow:0 8px 24px rgba(0,0,0,.4)}
 #toast button{font-weight:700;min-height:44px;color:inherit;flex:none}
 /* device test */
 .trow{display:flex;gap:12px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--line)}
@@ -223,7 +225,7 @@ button:disabled{opacity:.45}
 @keyframes signwig{0%,100%{transform:rotate(-2deg) scale(1)}50%{transform:rotate(2deg) scale(1.06)}}
 @keyframes signpop{0%{transform:scale(.3) rotate(-14deg);opacity:0}70%{transform:scale(1.25) rotate(4deg);opacity:1}100%{transform:none}}
 /* reward popup */
-#hype{position:fixed;inset:0;z-index:60;background:rgba(4,5,8,.93);display:flex;padding:calc(env(safe-area-inset-top,0px) + 8px) max(8px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 10px) max(8px,env(safe-area-inset-left,0px));animation:hfade .12s linear both;overflow:hidden;touch-action:none}
+#hype{position:fixed;inset:0;z-index:60;background:rgba(4,5,8,.93);display:flex;padding:calc(env(safe-area-inset-top,0px) + 8px) max(8px,env(safe-area-inset-right,0px)) calc(var(--sab) + 10px) max(8px,env(safe-area-inset-left,0px));animation:hfade .12s linear both;overflow:hidden;touch-action:none}
 .hstage{position:relative;width:100%;max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:10px;animation:hquake .95s .25s linear both;will-change:transform}
 .himgwrap{position:relative;flex:1;min-height:0;width:100%;border-radius:26px;overflow:hidden;background:#000;box-shadow:0 22px 70px rgba(0,0,0,.7);animation:hsmash .85s both;will-change:transform}
 .himgwrap img{position:absolute;inset:0;display:block;width:100%;height:100%;max-width:none;object-fit:cover}
@@ -255,7 +257,7 @@ button:disabled{opacity:.45}
 
 <script>
 'use strict';
-const APP_VERSION='0.3.2';
+const APP_VERSION='0.3.3';
 /* ---------- personal data lives in the private repo; these are filled from local storage at start ---------- */
 let SPLIT=[],EX={},FOODS=[],SUPPS=[],MAINT=2500,BASE_MEALS=[],TEST_BC=[];
 const PHASES=[['cut','Lose fat',-400],['main','Maintain',0],['lean','Lean gain',250],['bulk','Bulk',500]];
@@ -744,7 +746,7 @@ const AUTO=[
  ['github','GitHub private repository',async()=>{if(!GHC)return{ok:false,detail:'Not connected'};const j=await ghRepo(GHC);const l=(await ghList('backups')).filter(f=>/.json$/.test(f.name));return{ok:!!j.private,detail:`${j.full_name} is ${j.private?'private':'PUBLIC – make it private!'}. ${l.length} backup file${l.length===1?'':'s'}.`}}],
  ['backup','Backup within the last 7 days',async()=>{const r=GHC&&navigator.onLine?await backup('device test'):{ok:false,msg:GHC?'Offline':'Not connected'};return{ok:r.ok&&!backupStale(),detail:`${r.msg}. Last success ${ago(BK.lastOk)}.`}}],
  ['share','File export (share sheet with files)',async()=>{let f;try{f=new File(['{}'],'t.json',{type:'application/json'})}catch(e){}const ok=!!(f&&navigator.canShare&&navigator.canShare({files:[f]}));return{ok,detail:`${ok?'Sharing files is supported.':'Sharing files is not supported; export falls back to a download.'} showSaveFilePicker: ${'showSaveFilePicker' in window?'present':'absent'}.${EXP.at?` Last export: ${EXP.ok===false?'failed '+EXP.err:EXP.ok===null?'cancelled':'done via '+EXP.how}.`:''}`}}],
- ['layout','Tab bar reaches the bottom, notch is clear',async()=>{const ins=insets(),tb=document.getElementById('tabs').getBoundingClientRect(),pane=document.getElementById('scroll').getBoundingClientRect(),H=window.innerHeight;const gap=Math.round(H-tb.bottom),short=Math.round(screen.height-H),ok=Math.abs(gap)<=1&&pane.top>=ins.t-0.5&&(!isStandalone()||ins.b>0);return{ok,detail:`Screen ${innerWidth}×${H}. Safe areas: top ${ins.t}, bottom ${ins.b}, left ${ins.l}, right ${ins.r}. Tab bar ends ${gap} px above the screen edge, content starts at ${Math.round(pane.top)} px. Viewport ${short} px shorter than the screen. ${vhTxt(vh())}. Check visually and with the Layout probe.`}}],
+ ['layout','Tab bar reaches the bottom, notch is clear',async()=>{const ins=insets(),tb=document.getElementById('tabs').getBoundingClientRect(),pane=document.getElementById('scroll').getBoundingClientRect(),H=window.innerHeight;const gap=Math.round(H-tb.bottom),short=Math.round(screen.height-H),ok=Math.abs(gap)<=1&&pane.top>=ins.t-0.5&&(!isStandalone()||ins.b>0);return{ok,detail:`Screen ${innerWidth}×${H}. Safe areas: top ${ins.t}, bottom ${ins.b}, left ${ins.l}, right ${ins.r}. Tab bar ends ${gap} px above the screen edge, content starts at ${Math.round(pane.top)} px. Viewport ${short} px shorter than the screen; home bar spacing reduced by ${getComputedStyle(document.documentElement).getPropertyValue('--vgap').trim()||'0px'}. ${vhTxt(vh())}. Check visually and with the Layout probe.`}}],
  ['anim','Shaking Log PR button, frame rate',async()=>{const el=document.getElementById('animdemo');if(el){el.classList.remove('armpop');void el.offsetWidth;el.classList.add('armpop')}const r=await measureFrames(1500);return{ok:fpsOK(r),detail:fpsTxt(r)+'. Use the popup buttons below for the reward test.'}}],
  ['haptic','Haptic switch support',async()=>{const i=document.createElement('input');i.type='checkbox';i.setAttribute('switch','');const sw='switch' in i;return{ok:null,detail:`Switch control ${sw?'is supported (iOS 17.4 or later)':'is not detected'}. Vibration API: ${'vibrate' in navigator?'present':'absent'}. Feel test below.`}}],
  ['speech','Speech recognition API',async()=>{const has='SpeechRecognition' in window||'webkitSpeechRecognition' in window;return{ok:null,detail:`${has?'Present':'Absent'}. Not used; dictation uses the keyboard microphone.`}}],
@@ -791,7 +793,7 @@ const paneEl=()=>document.getElementById(S.tab==='gym'?'pane-gym':'pane-food');
 function placePager(idx,dx){const w=document.getElementById('scroll').clientWidth||1;document.getElementById('pager').style.transform=`translateX(calc(${-50*idx}% + ${dx}px))`;document.getElementById('tabind').style.transform=`translateX(${(idx-dx/w)*100}%)`}
 function render(){
  if(!S)return;
- document.body.dataset.sec=S.tab;document.documentElement.dataset.sec=S.tab;
+ document.body.dataset.sec=S.tab;document.documentElement.dataset.sec=S.tab;setTheme();
  const pg=document.getElementById('pane-gym'),pf=document.getElementById('pane-food'),tg=pg.scrollTop,tf=pf.scrollTop;
  pg.innerHTML=S.cur?gymLive():gymHome();pf.innerHTML=foodHome();pg.scrollTop=tg;pf.scrollTop=tf;
  pg.inert=S.tab!=='gym';pf.inert=S.tab!=='food';
@@ -924,7 +926,13 @@ setInterval(()=>{if(S&&!document.hidden&&today()!==lastDay){lastDay=today();rend
 addEventListener('online',()=>{if(S&&GHC&&(BK.lastErr||backupStale()))backup('back online')});
 
 
+/* iOS fills the strip below a home screen app with the theme colour, so keep it in the tab bar colour of the open section */
+const setTheme=()=>{const m=document.getElementById('themecolor'),c=S&&S.tab==='food'?'#6B3A27':'#3E3F97';if(m&&m.content!==c)m.content=c};
+/* height iOS leaves below the app (screen minus viewport); the home bar spacing shrinks by that much */
+const fixGap=()=>{const g=isStandalone()&&innerHeight>innerWidth?Math.max(0,Math.round(screen.height-innerHeight)):0;document.documentElement.style.setProperty('--vgap',g+'px')};
+addEventListener('resize',fixGap);addEventListener('orientationchange',()=>setTimeout(fixGap,300));
 async function boot(){
+ fixGap();
  let hadCtl=false;
  if('serviceWorker' in navigator){hadCtl=!!navigator.serviceWorker.controller;navigator.serviceWorker.register('sw.js').catch(e=>{SWINFO.err=String(e)});navigator.serviceWorker.addEventListener('controllerchange',()=>{if(hadCtl)toast('A new version is ready',()=>location.reload(),'Reload',15000);hadCtl=true})}
  try{
