@@ -6,9 +6,11 @@
 <link rel="icon" href="icons/icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<!-- Opaque status bar on purpose: with black-translucent, iOS 26/27 home screen apps are drawn one status bar
+     too short and leave an unpaintable strip at the bottom (WebKit bug 301108). theme-color tints the bar. -->
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Gain">
-<meta name="theme-color" content="#3E3F97" id="themecolor">
+<meta name="theme-color" content="#0A0B18" id="themecolor">
 <meta name="format-detection" content="telephone=no">
 <style>[hidden]{display:none!important}body{margin:0}</style>
 <style>
@@ -19,8 +21,8 @@
   --body:-apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,'Segoe UI',Roboto,sans-serif;
   --r-l:22px;--r-m:16px;--r-s:12px;
   --panel:rgba(255,255,255,.075);--panel2:rgba(255,255,255,.09);--line:rgba(255,255,255,.11);--well:rgba(0,0,0,.34);--ink:#F4F2F8;--mute:#ACA8B8;--good:#6FE3A5;--warn:#FFD479;--bad:#FF7A7A;
-  /* bottom spacing for the home bar; reduced by --vgap when iOS already leaves a strip below the app (it does on iPhone home screen apps) */
-  --sab:max(0px,calc(env(safe-area-inset-bottom,0px) - var(--vgap,0px)));
+  /* bottom spacing for the home bar */
+  --sab:env(safe-area-inset-bottom,0px);
   --tabbg:#3E3F97;--bg:#0A0B18;--glow:#2D2E8E;--acc:#8F8BFF;--on:#0C0B33;--acc-a:rgba(143,139,255,.45);
 }
 [data-sec="gym"]{--mute:#ACA8B8;--tabbg:#3E3F97}
@@ -257,7 +259,7 @@ button:disabled{opacity:.45}
 
 <script>
 'use strict';
-const APP_VERSION='0.3.5';
+const APP_VERSION='0.3.6';
 /* ---------- personal data lives in the private repo; these are filled from local storage at start ---------- */
 let SPLIT=[],EX={},FOODS=[],SUPPS=[],MAINT=2500,BASE_MEALS=[],TEST_BC=[];
 const PHASES=[['cut','Lose fat',-400],['main','Maintain',0],['lean','Lean gain',250],['bulk','Bulk',500]];
@@ -756,7 +758,10 @@ const AUTO=[
  ['github','GitHub private repository',async()=>{if(!GHC)return{ok:false,detail:'Not connected'};const j=await ghRepo(GHC);const l=(await ghList('backups')).filter(f=>/.json$/.test(f.name));return{ok:!!j.private,detail:`${j.full_name} is ${j.private?'private':'PUBLIC – make it private!'}. ${l.length} backup file${l.length===1?'':'s'}.`}}],
  ['backup','Backup within the last 7 days',async()=>{const r=GHC&&navigator.onLine?await backup('device test'):{ok:false,msg:GHC?'Offline':'Not connected'};return{ok:r.ok&&!backupStale(),detail:`${r.msg}. Last success ${ago(BK.lastOk)}.`}}],
  ['share','File export (share sheet with files)',async()=>{let f;try{f=new File(['{}'],'t.json',{type:'application/json'})}catch(e){}const ok=!!(f&&navigator.canShare&&navigator.canShare({files:[f]}));return{ok,detail:`${ok?'Sharing files is supported.':'Sharing files is not supported; export falls back to a download.'} showSaveFilePicker: ${'showSaveFilePicker' in window?'present':'absent'}.${EXP.at?` Last export: ${EXP.ok===false?'failed '+EXP.err:EXP.ok===null?'cancelled':'done via '+EXP.how}.`:''}`}}],
- ['layout','Tab bar reaches the bottom, notch is clear',async()=>{const ins=insets(),tb=document.getElementById('tabs').getBoundingClientRect(),pane=document.getElementById('scroll').getBoundingClientRect(),H=window.innerHeight;const gap=Math.round(H-tb.bottom),short=Math.round(screen.height-H),ok=Math.abs(gap)<=1&&pane.top>=ins.t-0.5&&(!isStandalone()||ins.b>0);return{ok,detail:`Screen ${innerWidth}×${H}. Safe areas: top ${ins.t}, bottom ${ins.b}, left ${ins.l}, right ${ins.r}. Tab bar ends ${gap} px above the screen edge, content starts at ${Math.round(pane.top)} px. Viewport ${short} px shorter than the screen; home bar spacing reduced by ${getComputedStyle(document.documentElement).getPropertyValue('--vgap').trim()||'0px'}. ${vhTxt(vh())}. Check visually and with the Layout probe.`}}],
+ ['layout','Tab bar reaches the bottom, notch is clear',async()=>{const ins=insets(),tb=document.getElementById('tabs').getBoundingClientRect(),pane=document.getElementById('scroll').getBoundingClientRect(),H=window.innerHeight;const gap=Math.round(H-tb.bottom),short=Math.round(screen.height-H),st=(document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')||{}).content||'none';
+ /* WebKit bug 301108: app drawn under a transparent status bar but sized one status bar short, leaving a strip at the bottom */
+ const bug=isStandalone()&&ins.t>0&&short>=ins.t-1,ok=!bug&&Math.abs(gap)<=1&&pane.top>=ins.t-0.5&&(!isStandalone()||ins.b>0);
+ return{ok,detail:`Screen ${screen.width}×${screen.height}, app ${innerWidth}×${H} (${short} px shorter). Status bar style: ${st}. Safe areas: top ${ins.t}, bottom ${ins.b}, left ${ins.l}, right ${ins.r}. Tab bar ends ${gap} px above the app's bottom edge, content starts at ${Math.round(pane.top)} px. ${bug?'iOS bug: the app starts under the status bar but is sized one status bar short, so a strip at the bottom stays unpainted. Delete and re-add the app so the opaque status bar setting is used. ':isStandalone()&&ins.t===0?'Opaque status bar: the app starts below it and should reach the bottom edge. ':''}${vhTxt(vh())}. Check visually and with the Layout probe.`}}],
  ['anim','Shaking Log PR button, frame rate',async()=>{const el=document.getElementById('animdemo');if(el){el.classList.remove('armpop');void el.offsetWidth;el.classList.add('armpop')}const r=await measureFrames(1500);return{ok:fpsOK(r),detail:fpsTxt(r)+'. Use the popup buttons below for the reward test.'}}],
  ['haptic','Haptic switch support',async()=>{const i=document.createElement('input');i.type='checkbox';i.setAttribute('switch','');const sw='switch' in i;return{ok:null,detail:`Switch control ${sw?'is supported (iOS 17.4 or later)':'is not detected'}. Vibration API: ${'vibrate' in navigator?'present':'absent'}. Feel test below.`}}],
  ['speech','Speech recognition API',async()=>{const has='SpeechRecognition' in window||'webkitSpeechRecognition' in window;return{ok:null,detail:`${has?'Present':'Absent'}. Not used; dictation uses the keyboard microphone.`}}],
@@ -940,12 +945,9 @@ addEventListener('online',()=>{if(S&&GHC&&(BK.lastErr||backupStale()))backup('ba
 
 
 /* iOS fills the strip below a home screen app with the theme colour, so keep it in the tab bar colour of the open section */
-const setTheme=()=>{const m=document.getElementById('themecolor'),c=S&&S.tab==='food'?'#6B3A27':'#3E3F97';if(m&&m.content!==c)m.content=c};
-/* height iOS leaves below the app (screen minus viewport); the home bar spacing shrinks by that much */
-const fixGap=()=>{const g=isStandalone()&&innerHeight>innerWidth?Math.max(0,Math.round(screen.height-innerHeight)):0;document.documentElement.style.setProperty('--vgap',g+'px')};
-addEventListener('resize',fixGap);addEventListener('orientationchange',()=>setTimeout(fixGap,300));
+/* the status bar takes the colour at the top of the app (the --bg of the current section) */
+const setTheme=()=>{const m=document.getElementById('themecolor'),c=S&&S.tab==='food'?'#110C0A':'#0A0B18';if(m&&m.content!==c)m.content=c};
 async function boot(){
- fixGap();
  let hadCtl=false;
  if('serviceWorker' in navigator){hadCtl=!!navigator.serviceWorker.controller;navigator.serviceWorker.register('sw.js').catch(e=>{SWINFO.err=String(e)});navigator.serviceWorker.addEventListener('controllerchange',()=>{if(hadCtl)toast('A new version is ready',()=>location.reload(),'Reload',15000);hadCtl=true})}
  try{
