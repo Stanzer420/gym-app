@@ -1,4 +1,4 @@
-# Gym Tracking App
+# Gain
 
 A personal installable web app (PWA) for logging gym sets, PRs and food.
 

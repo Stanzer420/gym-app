@@ -1,13 +1,13 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Gym Tracking App</title>
+<title>Gain</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" href="icons/icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Gym">
+<meta name="apple-mobile-web-app-title" content="Gain">
 <meta name="theme-color" content="#3E3F97" id="themecolor">
 <meta name="format-detection" content="telephone=no">
 <style>[hidden]{display:none!important}body{margin:0}</style>
@@ -257,7 +257,7 @@ button:disabled{opacity:.45}
 
 <script>
 'use strict';
-const APP_VERSION='0.3.4';
+const APP_VERSION='0.3.5';
 /* ---------- personal data lives in the private repo; these are filled from local storage at start ---------- */
 let SPLIT=[],EX={},FOODS=[],SUPPS=[],MAINT=2500,BASE_MEALS=[],TEST_BC=[];
 const PHASES=[['cut','Lose fat',-400],['main','Maintain',0],['lean','Lean gain',250],['bulk','Bulk',500]];
@@ -713,7 +713,7 @@ function renderSetup(){document.body.dataset.sec='gym';const sh=document.getElem
  if(s.step==='connect')b=`<p class="callout" style="margin:0">Connect your private data repository. The app downloads your exercises, PRs, foods and photos once and then works offline. Backups go to the same place.</p>${tokenForm(s.repo||defaultRepo())}<button class="primary" data-a="suconnect">Connect</button>${s.msg?`<p class="callout bad" style="margin:0">${esc(s.msg)}</p>`:''}<label class="linkbtn" for="sufile" style="display:flex;align-items:center;justify-content:center">Restore from a backup file instead</label><input type="file" id="sufile" class="vh" accept=".json,application/json">`;
  else if(s.step==='choose')b=`<p class="callout" style="margin:0">Connected to <b>${esc(GHC.repo)}</b>. A backup exists. Restore it to get your logged history back, or start fresh from the seed data.</p><div class="list">${s.backups.slice(0,5).map(f=>`<button class="line" data-a="suback" data-n="${esc(f.name)}"><span class="t">Restore ${esc(f.name.replace(/\.json$/,''))}</span><span class="plus">Restore</span></button>`).join('')}</div><button class="ghost" data-a="suseed">Start fresh from seed data</button>`;
  else b=`<p class="callout" style="margin:0">${esc(s.msg||'Working …')}</p>`;
- sh.innerHTML=`<div class="shead"><h2>Gym Tracking App</h2></div><div class="sbody">${b}</div>`}
+ sh.innerHTML=`<div class="shead"><h2>Gain</h2></div><div class="sbody">${b}</div>`}
 async function finishSetup(st,withPhotos){
  SU={step:'busy',msg:'Saving your data on this phone …'};renderSetup();
  try{
@@ -795,7 +795,7 @@ function devtestHTML(){
 const saveDT=()=>DB.set('kv','devtest',{auto:DT.auto,manual:DT.manual}).catch(()=>{});
 async function runAuto(){DT.running=true;render();for(const [id,,fn] of AUTO){DT.auto[id]={ok:'run',detail:'Running …'};updDT();try{const r=await Promise.race([fn(),new Promise((_,rej)=>setTimeout(()=>rej(new Error('timed out after 90 s')),90000))]);DT.auto[id]=Object.assign(r,{at:Date.now(),v:APP_VERSION})}catch(e){DT.auto[id]={ok:false,detail:'Error: '+(e.message||e),at:Date.now(),v:APP_VERSION}}updDT()}DT.running=false;saveDT();if(sheet&&sheet.s==='devtest')render()}
 function updDT(){if(!sheet||sheet.s!=='devtest')return;const rows=document.querySelectorAll('#sheet .trow');AUTO.forEach(([id,name],i)=>{const r=DT.auto[id],el=rows[i];if(el)el.innerHTML=`${badge(r?r.ok:undefined)}<div class="tx"><div style="font-weight:600">${esc(name)}</div>${r?`<div class="small">${esc(r.detail)}</div>`:''}</div>`})}
-function dtReport(){const L=[`Gym app device test, version ${APP_VERSION}, ${new Date().toLocaleString('en-GB')}`,navigator.userAgent,isStandalone()?'Opened from home screen':'Opened in browser','','Automatic checks:'];
+function dtReport(){const L=[`Gain device test, version ${APP_VERSION}, ${new Date().toLocaleString('en-GB')}`,navigator.userAgent,isStandalone()?'Opened from home screen':'Opened in browser','','Automatic checks:'];
  /* every result says which app version and time it came from, so old results are not mistaken for new ones */
  const stamp=x=>x&&(x.at||x.v)?` [${x.v||'before 0.3.4'}${x.at?', '+new Date(x.at).toLocaleString('en-GB',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):''}${x.v===APP_VERSION?'':', OLD VERSION'}]`:'';
  AUTO.forEach(([id,name])=>{const r=DT.auto[id];L.push(`${r?r.ok===true?'PASS':r.ok===false?'FAIL':'INFO':'NOT RUN'}  ${name}${r?': '+r.detail+stamp(r):''}`)});L.push('','Hands-on tests:');MAN.forEach(([id,title])=>{const m=DT.manual[id]||{};L.push(`${m.state?m.state.toUpperCase():'NOT TESTED'}  ${title}${m.note?': '+m.note:''}${m.state||m.note?stamp(m):''}`)});return L.join('\n')}
@@ -897,7 +897,7 @@ const A={
  dtrun(){if(!DT.running)runAuto()},
  dtmark(el){const id=el.dataset.id,m=DT.manual[id]||(DT.manual[id]={});m.state=m.state===el.dataset.t?null:el.dataset.t;m.v=APP_VERSION;m.at=Date.now();saveDT();render()},
  dtclear(){DT={auto:{},manual:{}};saveDT();render()},
- dtshare(){const txt=dtReport();if(navigator.share){navigator.share({title:'Gym app device test',text:txt}).catch(()=>{})}else if(navigator.clipboard){navigator.clipboard.writeText(txt).then(()=>toast('Results copied'))}},
+ dtshare(){const txt=dtReport();if(navigator.share){navigator.share({title:'Gain device test',text:txt}).catch(()=>{})}else if(navigator.clipboard){navigator.clipboard.writeText(txt).then(()=>toast('Results copied'))}},
  dttool(el){const[k,v]=el.dataset.t.split(':');if(k==='sheet'){sheet={s:v};render()}else if(k==='gotab'){S.tab=v;sheet=null;save();render()}else if(k==='hype')popupTest(v);else if(k==='act'){if(v==='probe')layoutProbe();else if(v==='wl'){if(!S.cur){toast('Start a workout first; the lock is held during workouts')}else{keepAwake().then(()=>toast(WL.ok?'Screen wake lock is on':'Wake lock failed: '+WL.err))}}else A[v](el)}}
 };
 async function loadRestoreList(){try{const l=(await ghList('backups')).filter(f=>/\.json$/.test(f.name)).sort((a,b)=>b.name.localeCompare(a.name));if(sheet&&sheet.s==='restore'){sheet.list=l;render()}}catch(e){if(sheet&&sheet.s==='restore'){sheet.list=[];sheet.err=e.message;render()}}}
