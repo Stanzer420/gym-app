@@ -1,0 +1,7 @@
+# Personal data never belongs in this public repository.
+reference/
+seed-data.json
+*.backup.json
+gym-backup-*.json
+hype/
+CLAUDE.md

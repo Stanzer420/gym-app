@@ -1,0 +1,922 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Gym Tracking App</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Gym">
+<meta name="theme-color" content="#0A0B18">
+<meta name="format-detection" content="telephone=no">
+<style>[hidden]{display:none!important}body{margin:0}</style>
+<style>
+/* Layout: one-handed phone app in the iOS idiom. Filled rounded surfaces instead of outlines, the system font with rounded numerals, blue for Gym and orange for Food. */
+:root{
+  color-scheme:dark;
+  --display:ui-rounded,-apple-system,BlinkMacSystemFont,'SF Pro Rounded','SF Pro Display',system-ui,sans-serif;
+  --body:-apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,'Segoe UI',Roboto,sans-serif;
+  --r-l:22px;--r-m:16px;--r-s:12px;
+  --panel:rgba(255,255,255,.075);--panel2:rgba(255,255,255,.09);--line:rgba(255,255,255,.11);--well:rgba(0,0,0,.34);--ink:#F4F2F8;--mute:#ACA8B8;--good:#6FE3A5;--warn:#FFD479;--bad:#FF7A7A;
+  --bg:#0A0B18;--glow:#2D2E8E;--acc:#8F8BFF;--on:#0C0B33;--acc-a:rgba(143,139,255,.45);
+}
+[data-sec="gym"]{--mute:#ACA8B8}
+[data-sec="food"]{--bg:#110C0A;--glow:#5E2914;--acc:#FF8A5C;--on:#210C03;--acc-a:rgba(255,138,92,.45);--ink:#F8F2EE;--mute:#BDAEA5}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--ink);font:400 16px/1.35 var(--body);transition:background .25s;-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%}
+button,input,select{font:inherit;color:inherit}
+button{background:none;border:0;padding:0;cursor:pointer;text-align:left;touch-action:manipulation}
+button:active{opacity:.75}
+button:disabled{opacity:.45}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+/* the app fills the whole screen; top inset clears the notch, the tab bar pads itself down to the screen edge */
+#app{position:fixed;top:0;bottom:0;left:0;right:0;display:flex;flex-direction:column;max-width:560px;margin:0 auto;padding-top:env(safe-area-inset-top,0px)}
+#scroll{flex:1;min-height:0;overflow:hidden}
+#pager{display:flex;width:200%;height:100%;transition:transform .3s cubic-bezier(.22,.8,.25,1);will-change:transform}
+#pager.drag{transition:none}
+.pane{width:50%;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y;background:linear-gradient(to top,var(--glow),var(--bg) 74%);color:var(--ink)}
+.wrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 24px;display:flex;flex-direction:column;gap:18px}
+.top{display:flex;align-items:center;justify-content:space-between;padding-top:12px;gap:12px}
+.top h1{font:700 32px/1.05 var(--body);margin:0;letter-spacing:-.01em}
+.icons{display:flex;gap:8px}
+.ico{width:44px;height:44px;display:grid;place-items:center;color:var(--ink);background:var(--panel);border-radius:50%;flex:none}
+.ico svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.label{font:600 13px/1.2 var(--body);color:var(--mute)}
+.num{font-family:var(--display);font-variant-numeric:tabular-nums}
+.small{font-size:13.5px;color:var(--mute)}
+.sample{display:inline-block;font:600 11px/1 var(--body);color:var(--warn);background:rgba(255,212,121,.14);border-radius:6px;padding:3px 6px;vertical-align:1px}
+.primary{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:56px;background:var(--acc);color:var(--on);font:700 18px/1 var(--body);padding:0 16px;border-radius:var(--r-m);text-align:center}
+.ghost{display:flex;align-items:center;justify-content:center;min-height:50px;background:var(--panel2);border-radius:var(--r-m);padding:0 14px;font-weight:600;text-align:center;cursor:pointer}
+.linkbtn{min-height:44px;color:var(--ink);font-weight:500;text-align:center}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.vh{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none}
+/* tabs */
+#tabs{flex:none;position:relative;background:linear-gradient(rgba(255,255,255,.08),rgba(255,255,255,.08)),var(--glow);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+#tabbtn{display:grid;grid-template-columns:1fr 1fr}
+#tabind{position:absolute;top:-1px;left:0;width:50%;height:3px;background:#fff;transition:transform .3s cubic-bezier(.22,.8,.25,1);z-index:1}
+#tabind.drag{transition:none}
+.tab{height:54px;display:flex;align-items:center;justify-content:center;gap:8px;font:600 17px/1 var(--body);color:rgba(255,255,255,.62);position:relative;text-align:center}
+.tab[aria-current="page"]{color:#fff;font-weight:700}
+.tab .dot{width:7px;height:7px;border-radius:50%;background:#fff}
+.warnbar{display:block;width:100%;background:rgba(255,212,121,.14);color:var(--warn);border-radius:var(--r-s);padding:11px 14px;font-weight:600;font-size:14.5px;text-align:left}
+.warnslot:empty{display:none}
+/* gym home */
+.hero{background:var(--panel);border-radius:var(--r-l);padding:18px 16px 16px;display:flex;flex-direction:column;gap:14px}
+.hero .big{font:700 52px/1 var(--display);margin-top:4px}
+.hero .meta{color:var(--mute);margin-top:6px}
+.chips{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.chip{min-height:44px;background:var(--panel2);border-radius:var(--r-s);display:flex;align-items:center;justify-content:center;font:600 14.5px/1 var(--body);color:var(--mute);text-align:center}
+.chip.on{color:var(--on);background:var(--acc)}
+.list{display:flex;flex-direction:column;background:var(--panel);border-radius:var(--r-m);padding:0 14px}
+.line{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);width:100%;min-height:50px}
+.line:last-child,.usual:last-child{border-bottom:0}
+.line>div:first-child{min-width:0}
+.line .t{font-weight:600}
+.pr{display:inline-block;background:var(--acc);color:var(--on);font:700 12px/1 var(--display);padding:4px 7px;border-radius:7px}
+.sect{display:flex;flex-direction:column;gap:8px}
+.secthead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:0 2px}
+/* live workout */
+.status{position:sticky;top:0;z-index:5;background:var(--bg);padding-top:10px;padding-bottom:10px;display:flex;flex-direction:column;gap:10px}
+.status h1{font:700 28px/1.05 var(--body);margin:0}
+.statusrow{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.finish{min-height:44px;padding:0 18px;background:var(--panel2);color:var(--acc);font:600 16px/1 var(--body);border-radius:22px;display:flex;align-items:center}
+.goal{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:var(--panel);border-radius:var(--r-s);font-size:14px;color:var(--mute)}
+.goal b{font:600 15px/1 var(--body);color:var(--ink)}
+.goal.hit{background:var(--acc);color:var(--on)}
+.goal.hit b{color:var(--on)}
+.exs{display:flex;flex-direction:column;gap:8px}
+.ex{background:var(--panel);border-radius:var(--r-m)}
+.exhead{display:flex;width:100%;justify-content:space-between;align-items:center;gap:10px;padding:13px 14px;min-height:56px}
+.exhead .n{font:600 17px/1.2 var(--body)}
+.exhead .prg{font-size:14px;color:var(--mute);white-space:nowrap;display:flex;align-items:center;gap:6px;font-variant-numeric:tabular-nums}
+.exbody{padding:0 12px 12px;display:flex;flex-direction:column;gap:12px}
+.setting{display:flex;align-items:center;gap:10px;background:var(--panel2);border-radius:var(--r-s);padding:0 12px;min-height:46px}
+.setting input{flex:1;min-width:0;background:none;border:0;padding:0;font-size:16px;min-height:44px;outline-offset:2px}
+.setting input::placeholder{color:var(--mute);font-weight:400}
+.setting.has input{color:var(--acc);font-weight:700}
+.facts{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 2px}
+.facts>div{min-width:0}
+.facts .v{font:500 16px/1.35 var(--display);margin-top:4px;font-variant-numeric:tabular-nums}
+.setrow{display:flex;width:100%;justify-content:space-between;align-items:center;min-height:44px;padding:0 12px;background:var(--panel2);border-radius:var(--r-s);gap:10px}
+.setrow .sv{font:600 17px/1 var(--display);font-variant-numeric:tabular-nums}
+.setrow.done{background:none;color:var(--mute)}
+.setrow.done .sv{color:var(--ink)}
+.sets{display:flex;flex-direction:column;gap:6px}
+.active{background:var(--panel2);border-radius:var(--r-m);padding:12px;display:flex;flex-direction:column;gap:12px}
+.beat{display:flex;justify-content:space-between;align-items:center;gap:10px;min-height:22px}
+.beat .need{font:600 15px/1.15 var(--display);text-align:right}
+.beat .need.yes{color:var(--acc)}
+.steppers{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stp{display:flex;flex-direction:column;gap:6px;min-width:0}
+.stpc{display:grid;grid-template-columns:40px minmax(0,1fr) 40px;align-items:center;background:var(--well);border-radius:var(--r-m);height:60px;overflow:hidden}
+.stpc button{height:100%;display:grid;place-items:center;font:500 26px/1 var(--body);color:var(--acc)}
+.stpc button:active{background:var(--panel2)}
+.stpc input{width:100%;min-width:0;border:0;background:none;text-align:center;font:700 22px/1 var(--display);font-variant-numeric:tabular-nums;padding:0;outline-offset:-2px}
+.stpc .val{text-align:center;font:700 26px/1 var(--display);font-variant-numeric:tabular-nums}
+.setctl{display:flex;justify-content:center;gap:24px}
+@keyframes flash{0%{transform:scale(.97);opacity:.5}100%{transform:none;opacity:1}}
+.flash{animation:flash .45s ease-out}
+/* food */
+.macro{display:flex;flex-direction:column;gap:14px;background:var(--panel);border-radius:var(--r-l);padding:16px}
+.kcalrow{display:flex;justify-content:space-between;align-items:flex-end;gap:10px}
+.kcal{font:700 46px/1 var(--display);font-variant-numeric:tabular-nums}
+.kcal small{font:500 16px/1 var(--display);color:var(--mute);margin-left:4px}
+.left{text-align:right;font:600 17px/1.15 var(--display)}
+.ruler{height:12px;background:var(--panel2);position:relative;overflow:hidden;border-radius:6px}
+.ruler i{position:absolute;inset:0 auto 0 0;background:var(--acc);display:block;border-radius:6px}
+.mac3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.mac3>div{min-width:0;display:flex;flex-direction:column;gap:5px}
+.mac3 .v{font:600 19px/1 var(--display);font-variant-numeric:tabular-nums;white-space:nowrap}
+.mac3 .v small{font:500 13px/1 var(--display);color:var(--mute)}
+.bar{height:5px;background:var(--panel2);position:relative;border-radius:3px;overflow:hidden}
+.bar i{position:absolute;inset:0 auto 0 0;background:var(--ink);display:block;border-radius:3px}
+.bar.ok i{background:var(--good)}
+.ok-t{color:var(--good);font-size:12px;font-weight:600}
+.seg{display:grid;grid-template-columns:1fr 1fr;background:var(--panel2);border-radius:var(--r-s);padding:3px}
+.seg button{min-height:36px;text-align:center;font-weight:600;font-size:14px;color:var(--mute);border-radius:9px}
+.seg button.on{background:var(--well);color:var(--ink)}
+.searchbar{display:grid;grid-template-columns:minmax(0,1fr) 50px 50px;gap:8px}
+.sbtn{min-height:50px;display:flex;align-items:center;padding:0 16px;color:var(--mute);background:var(--panel);border-radius:25px}
+.sbtn.i{justify-content:center;padding:0;color:var(--acc)}
+.sbtn svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.usual{display:flex;align-items:stretch;border-bottom:1px solid var(--line)}
+.usual .main{flex:1;min-width:0;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 6px 10px 0;min-height:58px}
+.usual .edit{width:40px;display:grid;place-items:center;color:var(--mute);flex:none}
+.usual .edit svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.plus{font:600 17px/1 var(--display);color:var(--acc);white-space:nowrap;font-variant-numeric:tabular-nums}
+.supps{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.supp{min-height:46px;background:var(--panel);border-radius:var(--r-s);display:flex;align-items:center;justify-content:center;text-align:center;font-weight:600;font-size:13.5px;color:var(--mute);padding:2px}
+.supp.on{background:var(--acc);color:var(--on)}
+/* sheet */
+#sheet{position:fixed;inset:0;z-index:30;background:linear-gradient(to top,var(--glow),var(--bg) 74%);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.shead{flex:none;display:flex;align-items:center;gap:10px;padding:10px max(16px,env(safe-area-inset-right,0px)) 8px max(16px,env(safe-area-inset-left,0px));max-width:560px;width:100%;margin:0 auto}
+.shead h2{font:700 24px/1.1 var(--body);margin:0;flex:1;min-width:0}
+.sbody{flex:1;min-height:0;overflow-y:auto;width:100%;max-width:560px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:10px 28px;display:flex;flex-direction:column;gap:16px}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.input{width:100%;min-height:50px;background:var(--panel);border:0;padding:0 14px;font-size:16px;border-radius:var(--r-s)}
+.input::placeholder{color:var(--mute)}
+.input.miss{box-shadow:inset 0 0 0 2px var(--warn)}
+.totals{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;background:var(--panel);border-radius:var(--r-m);padding:12px 14px}
+.totals>div{min-width:0}
+.totals .v{font:600 18px/1.1 var(--display);margin-top:3px;font-variant-numeric:tabular-nums}
+.item{display:flex;flex-direction:column;gap:8px;padding:12px 0;border-bottom:1px solid var(--line)}
+.item .tt{display:flex;justify-content:space-between;gap:10px;font-weight:600}
+.item .stpc{height:50px}
+.item .stpc .val{font-size:20px}
+.callout{background:var(--panel);border-radius:var(--r-m);padding:12px 14px;font-size:14.5px;color:var(--mute)}
+.callout b{color:var(--ink)}
+.callout.bad{color:var(--bad)}
+.scanv{position:relative;height:250px;background:#000;border-radius:var(--r-l);overflow:hidden;flex:none}
+.scanv video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.scanv .aim{position:absolute;left:10%;right:10%;top:36%;bottom:36%;border:2px solid var(--acc);border-radius:12px;box-shadow:0 0 0 999px rgba(0,0,0,.28)}
+.chart{width:100%;display:block;touch-action:pan-y}
+.readout{display:flex;justify-content:space-between;align-items:baseline;gap:10px;min-height:28px}
+.readout .num{font-size:22px;font-weight:600}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{background:var(--panel);border-radius:var(--r-m);padding:12px 14px}
+.tile .v{font:700 28px/1 var(--display);margin-top:6px;font-variant-numeric:tabular-nums}
+.look{display:flex;align-items:center;gap:12px;background:var(--panel);border-radius:var(--r-m);padding:12px 14px;min-height:54px;width:100%}
+.look.on{box-shadow:inset 0 0 0 2px var(--ink)}
+.swatch{width:46px;height:34px;border-radius:11px;flex:none}
+#toast{position:fixed;left:16px;right:16px;bottom:calc(64px + env(safe-area-inset-bottom,0px));z-index:80;background:var(--ink);color:var(--bg);display:flex;justify-content:space-between;align-items:center;gap:10px;padding:0 16px;min-height:50px;font-weight:600;max-width:528px;margin:0 auto;border-radius:var(--r-m);box-shadow:0 8px 24px rgba(0,0,0,.4)}
+#toast button{font-weight:700;min-height:44px;color:inherit;flex:none}
+/* device test */
+.trow{display:flex;gap:12px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--line)}
+.trow:last-child{border-bottom:0}
+.trow .tx{min-width:0;flex:1}
+.trow .tx .small{overflow-wrap:anywhere}
+.badge{flex:none;min-width:50px;text-align:center;border-radius:7px;font:700 12px/1 var(--body);padding:6px 6px;margin-top:1px;background:var(--panel2);color:var(--mute)}
+.badge.pass{background:var(--good);color:#06220f}
+.badge.fail{background:var(--bad);color:#2b0606}
+.mt{background:var(--panel);border-radius:var(--r-m);padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+.mt .tt{display:flex;gap:10px;align-items:baseline;justify-content:space-between;font-weight:600}
+.mt .how{font-size:14.5px;color:var(--mute)}
+.mt .tools{display:flex;flex-wrap:wrap;gap:8px}
+.mt .tools .ghost{min-height:40px;font-size:14.5px;padding:0 12px;border-radius:var(--r-s)}
+.pf{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pf button{min-height:42px;border-radius:var(--r-s);background:var(--panel2);text-align:center;font-weight:700;color:var(--mute)}
+.pf button.pass.on{background:var(--good);color:#06220f}
+.pf button.fail.on{background:var(--bad);color:#2b0606}
+.mt input.input{min-height:42px;background:var(--panel2)}
+.vswitch{display:flex;align-items:center;gap:10px;min-height:40px}
+.vswitch input{width:51px;height:31px}
+/* hidden switch used for the haptic tick; it must stay rendered, so it is moved out of sight instead of hidden */
+#hap{position:fixed;left:0;top:0;width:1px;height:1px;opacity:.01;overflow:hidden;pointer-events:none;z-index:-1}
+/* set that would be a PR */
+.prsign{display:inline-block;background:var(--acc);color:var(--on);padding:6px 12px;border-radius:15px;font-weight:700;animation:signwig 1.15s ease-in-out infinite}
+.primary.armbtn{min-height:72px;font-size:23px;box-shadow:0 0 26px var(--acc-a);animation:armbuzz .7s linear infinite}
+.armpop.primary.armbtn{animation:armpop .42s cubic-bezier(.2,1.4,.4,1) both,armbuzz .7s .42s linear infinite}
+.armpop.prsign{animation:signpop .45s cubic-bezier(.2,1.5,.4,1) both,signwig 1.15s .45s ease-in-out infinite}
+@keyframes armbuzz{0%,52%,100%{transform:none}4%{transform:translate(-2.5px,1px) rotate(-.6deg)}10%{transform:translate(2.5px,-1px) rotate(.6deg)}16%{transform:translate(-2.5px,-1px) rotate(-.5deg)}22%{transform:translate(2px,1px) rotate(.5deg)}28%{transform:translate(-2px,1px) rotate(-.4deg)}34%{transform:translate(2px,-1px) rotate(.3deg)}40%{transform:translate(-1px,0)}46%{transform:translate(1px,0)}76%{transform:scale(1.025)}}
+@keyframes armpop{0%{transform:scale(.8)}60%{transform:scale(1.09)}100%{transform:none}}
+@keyframes signwig{0%,100%{transform:rotate(-2deg) scale(1)}50%{transform:rotate(2deg) scale(1.06)}}
+@keyframes signpop{0%{transform:scale(.3) rotate(-14deg);opacity:0}70%{transform:scale(1.25) rotate(4deg);opacity:1}100%{transform:none}}
+/* reward popup */
+#hype{position:fixed;inset:0;z-index:60;background:rgba(4,5,8,.93);display:flex;padding:calc(env(safe-area-inset-top,0px) + 8px) max(8px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 10px) max(8px,env(safe-area-inset-left,0px));animation:hfade .12s linear both;overflow:hidden;touch-action:none}
+.hstage{position:relative;width:100%;max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:10px;animation:hquake .95s .25s linear both;will-change:transform}
+.himgwrap{position:relative;flex:1;min-height:0;width:100%;border-radius:26px;overflow:hidden;background:#000;box-shadow:0 22px 70px rgba(0,0,0,.7);animation:hsmash .85s both;will-change:transform}
+.himgwrap img{position:absolute;inset:0;display:block;width:100%;height:100%;max-width:none;object-fit:cover}
+.hshade{position:absolute;left:0;right:0;bottom:0;height:34%;background:linear-gradient(transparent,rgba(0,0,0,.82))}
+.hkicker{position:absolute;left:14px;top:14px;background:var(--acc);color:var(--on);font:800 16px/1 var(--body);padding:9px 14px;border-radius:18px}
+.hcap{position:absolute;left:16px;right:16px;bottom:15px;font:700 19px/1.2 var(--body);color:#fff;font-variant-numeric:tabular-nums}
+.hflash{position:fixed;inset:0;background:#fff;pointer-events:none;opacity:0;animation:hflash .34s .25s ease-out both;z-index:2}
+.hring{position:fixed;left:50%;top:44%;width:170px;height:170px;margin:-85px 0 0 -85px;border-radius:50%;border:12px solid var(--acc);pointer-events:none;animation:hring .62s .25s cubic-bezier(.1,.7,.3,1) both;z-index:3}
+.hring.r2{animation-delay:.34s;border-width:7px;border-color:#fff}
+.hbit{position:fixed;left:50%;top:44%;width:13px;height:13px;border-radius:3px;background:var(--acc);pointer-events:none;animation:hbit .8s .25s cubic-bezier(.08,.75,.25,1) both;z-index:3}
+.hbit:nth-of-type(3n){background:#fff;width:8px;height:8px}
+.hbtn{flex:none;width:100%;min-height:68px;border-radius:22px;background:var(--acc);color:var(--on);font:800 24px/1.1 var(--body);text-align:center;animation:hbtn .4s .78s cubic-bezier(.2,1.5,.4,1) both}
+@keyframes hfade{from{opacity:0}to{opacity:1}}
+@keyframes hsmash{0%{transform:scale(3.6) rotate(-9deg);opacity:0;animation-timing-function:cubic-bezier(.7,0,1,.7)}8%{opacity:1;animation-timing-function:cubic-bezier(.7,0,1,.7)}30%{transform:scale(.84) rotate(2deg);animation-timing-function:ease-out}44%{transform:scale(1.1) rotate(-1.4deg);animation-timing-function:ease-in-out}58%{transform:scale(.96) rotate(.6deg);animation-timing-function:ease-in-out}76%{transform:scale(1.02) rotate(0);animation-timing-function:ease-in-out}100%{transform:none;opacity:1}}
+@keyframes hquake{0%,100%{transform:none}5%{transform:translate(-26px,16px) rotate(-3deg)}11%{transform:translate(24px,-18px) rotate(2.6deg)}17%{transform:translate(-22px,-12px) rotate(-2.4deg)}23%{transform:translate(20px,14px) rotate(2deg)}30%{transform:translate(-16px,10px) rotate(-1.6deg)}37%{transform:translate(14px,-10px) rotate(1.3deg)}45%{transform:translate(-10px,-7px) rotate(-1deg)}53%{transform:translate(9px,6px) rotate(.8deg)}62%{transform:translate(-6px,4px) rotate(-.5deg)}71%{transform:translate(5px,-3px) rotate(.3deg)}81%{transform:translate(-3px,2px)}91%{transform:translate(2px,-1px)}}
+@keyframes hflash{0%{opacity:.9}100%{opacity:0}}
+@keyframes hring{0%{transform:scale(.2);opacity:1}100%{transform:scale(5);opacity:0}}
+@keyframes hbit{0%{transform:translate(0,0) rotate(0);opacity:1}100%{transform:translate(var(--x),var(--y)) rotate(var(--r));opacity:0}}
+@keyframes hbtn{from{transform:translateY(90px) scale(.8);opacity:0}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.flash,#hype,.hstage,.himgwrap,.hbtn,.prsign,.primary.armbtn,.armpop.primary.armbtn,.armpop.prsign{animation:none}.hring,.hbit,.hflash{display:none}body{transition:none}#pager,#tabind{transition:none}}
+</style></head><body data-sec="gym">
+
+<div id="app"><div id="scroll"><div id="pager"><div class="pane" id="pane-gym" data-sec="gym"></div><div class="pane" id="pane-food" data-sec="food"></div></div></div><nav id="tabs" aria-label="Sections"><div id="tabind"></div><div id="tabbtn"></div></nav></div>
+<label id="hap" aria-hidden="true"><input type="checkbox" switch tabindex="-1"></label>
+<div id="sheet" hidden></div>
+<div id="toast" hidden></div>
+<div id="hype" hidden></div>
+<noscript><p style="padding:40px 20px">This app needs JavaScript.</p></noscript>
+
+<script>
+'use strict';
+const APP_VERSION='0.3.0';
+/* ---------- personal data lives in the private repo; these are filled from local storage at start ---------- */
+let SPLIT=[],EX={},FOODS=[],SUPPS=[],MAINT=2500,BASE_MEALS=[],TEST_BC=[];
+const PHASES=[['cut','Lose fat',-400],['main','Maintain',0],['lean','Lean gain',250],['bulk','Bulk',500]];
+const goalsFor=d=>{const g=S.goals,t=MAINT+d,r=t-400,c=(k,x)=>Math.max(0,Math.round((k-x.p*4-x.f*9)/4/5)*5);return{training:{k:t,p:g.training.p,c:c(t,g.training),f:g.training.f},rest:{k:r,p:g.rest.p,c:c(r,g.rest),f:g.rest.f}}};
+const clone=o=>JSON.parse(JSON.stringify(o));
+
+/* ---------- PR logic ---------- */
+const D=x=>x[2]==null?x[0]:x[2];
+const isPR=(recs,w,r,d)=>{const dd=d==null?w:d;return r>0&&!recs.some(x=>x[0]>=w&&D(x)>=dd&&x[1]>=r)};
+const target=(recs,w,d)=>{const dd=d==null?w:d;let m=0;recs.forEach(x=>{if(x[0]>=w&&D(x)>=dd&&x[1]>m)m=x[1]});return m+1};
+const pareto=recs=>recs.filter((x,i)=>!recs.some((y,j)=>j!==i&&y[0]>=x[0]&&D(y)>=D(x)&&y[1]>=x[1]&&(y[0]>x[0]||D(y)>D(x)||y[1]>x[1]))).filter((x,i,a)=>a.findIndex(y=>y[0]===x[0]&&D(y)===D(x)&&y[1]===x[1])===i).sort((a,b)=>a[0]-b[0]);
+const e1rm=(w,r)=>w===0?r:w*(1+r/30);
+
+/* ---------- seed conversion ---------- */
+function cfgFromSeed(sd){
+ if(!sd||!Array.isArray(sd.split)||!Array.isArray(sd.foods))throw new Error('The seed data has no split or foods');
+ const tag=s=>{s=String(s||'').toLowerCase();return /unconfirmed|placeholder/.test(s)?'placeholder':/package|pack/.test(s)?'pack':/listing|label/.test(s)?'label':'typical'};
+ const notes={};
+ const split=sd.split.map(d=>({id:d.id,name:d.name,sub:d.muscleGroup||'',ex:(d.exercises||[]).map(e=>{if(e.setting)notes[e.id]=e.setting;return{id:e.id,n:e.name,sets:Math.max(3,+e.defaultSets||3),drop:!!e.everySetIsDropSet,bw:!!e.bodyweight,rec:(e.records||[]).map(r=>r.dropToKg!=null?[+r.weightKg,+(r.totalReps!=null?r.totalReps:r.reps),+r.dropToKg]:[+r.weightKg,+r.reps])}})}));
+ const foods=sd.foods.map(f=>{const o={id:f.id,n:f.name,a:(f.aliases||[]).map(x=>String(x).toLowerCase()),u:f.unit==='piece'||f.unit==='pc'?'pc':(f.unit||'g'),k:+f.kcal||0,p:+f.proteinG||0,c:+f.carbsG||0,f:+f.fatG||0,tag:tag(f.source)};if(f.gramsPerPiece)o.g=+f.gramsPerPiece;if(f.barcode)o.bc=String(f.barcode);return o});
+ const meals=(sd.meals||[]).map(m=>{const o={id:m.id,n:m.name,sub:m.subtitle||'',items:(m.items||[]).map(i=>[i.food,+i.amount]),usual:m.usual?1:0};if(m.ticksSupplements)o.supp=1;if(m.batchPortions)o.batch=+m.batchPortions;if(m.suggestOnIsoWeekdays)o.weekdays=m.suggestOnIsoWeekdays.map(x=>x%7);return o});
+ const g=sd.goals||{};
+ const goals={training:Object.assign({k:3000,p:150,c:350,f:80},g.training),rest:Object.assign({k:2600,p:150,c:250,f:80},g.rest)};
+ return{v:1,split,foods,meals,notes,supps:sd.supplements||[],maint:+g.maintenanceEstimateKcal||goals.training.k,phase:g.phase||'main',goals,bwStart:+sd.bodyWeightStartKg||null,baseMeals:meals.map(m=>m.id),testBarcodes:(sd.testBarcodes||[]).map(String)};
+}
+const stateFromCfg=cfg=>({schema:1,tab:'gym',phase:cfg.phase,goals:clone(cfg.goals),nextIdx:0,sessions:[],bw:[],cur:null,days:{},foods:[],meals:clone(cfg.meals),notes:clone(cfg.notes),cfg});
+function applyCfg(){const c=S.cfg;SPLIT=c.split;EX={};SPLIT.forEach(d=>d.ex.forEach(e=>EX[e.id]=e));FOODS=c.foods;SUPPS=c.supps;MAINT=c.maint;BASE_MEALS=c.baseMeals||[];TEST_BC=c.testBarcodes||[];if(S.nextIdx>=SPLIT.length)S.nextIdx=0}
+
+/* ---------- storage: IndexedDB ---------- */
+const DB=(()=>{let p=null;
+ const open=()=>p||(p=new Promise((res,rej)=>{const r=indexedDB.open('gymapp',1);r.onupgradeneeded=()=>{const d=r.result;['kv','photos','off'].forEach(n=>{if(!d.objectStoreNames.contains(n))d.createObjectStore(n)})};r.onsuccess=()=>{const d=r.result;d.onversionchange=()=>{d.close();p=null};d.onclose=()=>{p=null};res(d)};r.onerror=()=>{p=null;rej(r.error)};r.onblocked=()=>rej(new Error('Storage is blocked by another open copy of the app'))}));
+ const tx=(store,mode,fn)=>open().then(d=>new Promise((res,rej)=>{const t=d.transaction(store,mode,mode==='readwrite'?{durability:'strict'}:undefined),q=fn(t.objectStore(store));let out;if(q)q.onsuccess=()=>{out=q.result};t.oncomplete=()=>res(out);t.onerror=t.onabort=()=>rej(t.error||new Error('Storage error'))}));
+ return{get:(s,k)=>tx(s,'readonly',o=>o.get(k)),set:(s,k,v)=>tx(s,'readwrite',o=>o.put(v,k)),del:(s,k)=>tx(s,'readwrite',o=>o.delete(k)),keys:s=>tx(s,'readonly',o=>o.getAllKeys()),clear:s=>tx(s,'readwrite',o=>o.clear())}})();
+let S=null,GHC=null,BK={},PERSIST={},CAM={},WL={},EXP={},DT={auto:{},manual:{}},SWINFO={};
+let flushP=null,dirty=false,saveErr=null,lastSaved=0;
+const save=()=>{dirty=true;if(!flushP)flushP=flush()};
+const saved=()=>flushP||Promise.resolve();
+async function flush(){try{while(dirty){dirty=false;try{await DB.set('kv','state',S);saveErr=null;lastSaved=Date.now()}catch(e){saveErr=e;console.error(e)}}}finally{flushP=null}}
+let armedKey=null,sheet=null,flashId=null,toastT=null,draft=null;
+
+const iso=(d=new Date())=>{const z=new Date(d.getTime()-d.getTimezoneOffset()*6e4);return z.toISOString().slice(0,10)};
+const today=()=>iso(new Date(Date.now()-4*36e5)); /* the day changes at 04:00 */
+const day=()=>{const k=today();if(!S.days[k])S.days[k]={type:'rest',entries:[],supps:[]};return S.days[k]};
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt=n=>{const v=Math.round(n*10)/10;return String(v)};
+const int=n=>Math.round(n).toLocaleString('en-US');
+const wTxt=w=>w===0?'BW':fmt(w);
+const setTxt=(w,r,d)=>w===0?`BW × ${r}`:d!=null&&d<w?`${fmt(w)} → ${fmt(d)} × ${r}`:`${fmt(w)} × ${r}`;
+const shortDate=d=>new Date(d+'T12:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+const allFoods=()=>FOODS.concat(S.foods);
+const food=id=>allFoods().find(f=>f.id===id);
+const fac=(f,a)=>f.u==='pc'?a:a/100;
+const macros=items=>items.reduce((m,[id,a])=>{const f=food(id);if(!f)return m;const x=fac(f,a);m.k+=(f.k||0)*x;m.p+=(f.p||0)*x;m.c+=(f.c||0)*x;m.f+=(f.f||0)*x;return m},{k:0,p:0,c:0,f:0});
+const unit=f=>f.u==='pc'?'×':f.u;
+const amtTxt=(f,a)=>f.u==='pc'?`${fmt(a)} ×`:`${fmt(a)} ${f.u}`;
+const stepFor=(f,a)=>f.u==='pc'?1:a>=100?10:5;
+const ago=t=>{if(!t)return 'never';const m=(Date.now()-t)/6e4;return m<2?'just now':m<90?Math.round(m)+' min ago':m<36*60?Math.round(m/60)+' h ago':Math.round(m/1440)+' days ago'};
+const stamp=t=>t?new Date(t).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'';
+
+/* ---------- gym data helpers ---------- */
+const allRecs=exId=>{const out=EX[exId].rec.map(x=>x.slice());S.sessions.forEach(s=>s.sets.forEach(t=>{if(t.ex===exId)out.push([t.w,t.r,t.d])}));return out};
+const workRec=e=>e.rec.length?e.rec.slice().sort((a,b)=>b[1]-a[1]||b[0]-a[0])[0]:[20,10];
+/* no session logged yet: pre-fill from the PR list instead of inventing a last session */
+const lastFor=exId=>{for(let i=S.sessions.length-1;i>=0;i--){const t=S.sessions[i].sets.filter(x=>x.ex===exId);if(t.length)return{date:S.sessions[i].date,sets:t.map(x=>[x.w,x.r,x.d]),real:true}}const e=EX[exId],[w,r,d]=workRec(e);return{sets:Array.from({length:e.sets||3},()=>[w,r,d]),real:false}};
+const startWorkout=idx=>{const d=SPLIT[idx];S.cur={day:d.id,idx,seq:0,open:0,started:Date.now(),ex:d.ex.map(e=>{const s=lastFor(e.id).sets.map(([w,r,d])=>({w,r,d,done:false,pr:false}));while(s.length<3){const l=s[s.length-1]||{w:20,r:10};s.push({w:l.w,r:l.r,d:l.d,done:false,pr:false})}return{id:e.id,sets:s}})};day().type='training';save();sheet=null;render();keepAwake()};
+const recalc=()=>{const c=S.cur;c.ex.forEach(x=>{const run=allRecs(x.id);x.sets.filter(t=>t.done).sort((a,b)=>a.seq-b.seq).forEach(t=>{t.pr=isPR(run,t.w,t.r,t.d);run.push([t.w,t.r,t.d])});x.sets.forEach(t=>{if(!t.done)t.pr=false})})};
+const curRecs=x=>{const run=allRecs(x.id);x.sets.filter(t=>t.done).forEach(t=>run.push([t.w,t.r,t.d]));return run};
+const prCount=()=>S.cur?S.cur.ex.reduce((n,x)=>n+x.sets.filter(t=>t.pr).length,0):0;
+
+/* ---------- screen stays on during a workout ---------- */
+let wlock=null;
+async function keepAwake(){if(!S||!S.cur)return;if(!('wakeLock' in navigator)){WL={ok:false,err:'Wake Lock API not available'};return}if(wlock&&!wlock.released)return;try{wlock=await navigator.wakeLock.request('screen');WL={ok:true,at:Date.now()};wlock.addEventListener('release',()=>{WL.releasedAt=Date.now()})}catch(e){WL={ok:false,err:e.name+': '+e.message,at:Date.now()}}}
+function releaseAwake(){if(wlock){wlock.release().catch(()=>{});wlock=null}}
+
+/* ---------- icons ---------- */
+const I={chart:'<svg viewBox="0 0 24 24"><path d="M4 20V4M4 20h16M8 16l4-5 3 3 5-7"/></svg>',gear:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg>',back:'<svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>',close:'<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>',scan:'<svg viewBox="0 0 24 24"><path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4M8 8v8M11 8v8M14 8v8M17 8v8"/></svg>',mic:'<svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg>',edit:'<svg viewBox="0 0 24 24"><path d="M4 20l1-4L16 5l3 3L8 19l-4 1zM14 7l3 3"/></svg>'};
+const stepper=(lbl,val,act,idAttr)=>`<div class="stp"><span class="label">${lbl}</span><div class="stpc"><button data-a="${act}" data-d="-1" aria-label="Less ${lbl}">−</button>${idAttr?`<input id="${idAttr}" inputmode="decimal" value="${val}" aria-label="${lbl}" data-c="${act}">`:`<div class="val num" id="${act}-v">${val}</div>`}<button data-a="${act}" data-d="1" aria-label="More ${lbl}">+</button></div></div>`;
+const topbar=(title,stats)=>`<div class="top"><h1>${title}</h1><div class="icons"><button class="ico" data-a="open" data-s="${stats}" aria-label="Statistics">${I.chart}</button><button class="ico" data-a="open" data-s="settings" aria-label="Settings">${I.gear}</button></div></div>`;
+const backupStale=()=>!BK.lastOk||Date.now()-BK.lastOk>7*864e5;
+function warnHTML(){if(!GHC)return `<button class="warnbar" data-a="open" data-s="settings">Backup is off. Connect GitHub in Settings.</button>`;if(BK.lastTry&&backupStale())return `<button class="warnbar" data-a="open" data-s="settings">Last successful backup: ${ago(BK.lastOk)}. Tap to check.</button>`;return ''}
+const refreshWarn=()=>document.querySelectorAll('.warnslot').forEach(el=>{el.innerHTML=warnHTML()});
+
+/* ---------- gym screens ---------- */
+function gymHome(){
+ const sel=window.__pick==null?S.nextIdx:window.__pick;const pd=SPLIT[sel];
+ const bw=S.bw.length?S.bw[S.bw.length-1]:null;
+ const recent=S.sessions.slice(-4).reverse();
+ const sets=pd.ex.reduce((n,e)=>n+Math.max(3,lastFor(e.id).sets.length),0);
+ return `<div class="wrap">${topbar('Gym','gymstats')}<div class="warnslot">${warnHTML()}</div>
+ <section class="hero">
+  <div><div class="label">${sel===S.nextIdx?'Up next':'Selected'}</div><div class="big">${esc(pd.name)}</div><div class="meta">${pd.ex.length} exercises · ${sets} sets ready to log</div></div>
+  <div class="chips" role="group" aria-label="Choose workout">${SPLIT.map((s,i)=>`<button class="chip ${i===sel?'on':''}" data-a="pick" data-i="${i}">${esc(s.name)}</button>`).join('')}</div>
+  <button class="primary" data-a="start" data-i="${sel}">Start ${esc(pd.name)}</button>
+ </section>
+ <section class="sect"><div class="secthead"><span class="label">In this workout</span><span class="small">Heaviest PR</span></div><div class="list">
+  ${pd.ex.map(e=>{const p=pareto(allRecs(e.id));const b=p[p.length-1];return `<div class="line"><div class="t">${esc(e.n)}</div><div class="num" style="white-space:nowrap;font-size:17px;font-weight:600">${b?setTxt(b[0],b[1],b[2]):'—'}</div></div>`}).join('')}
+ </div></section>
+ <section class="sect"><div class="secthead"><span class="label">Recent sessions</span>${bw?`<span class="small">Body weight ${fmt(bw.v)} kg</span>`:''}</div>
+  ${recent.length?`<div class="list">${recent.map(s=>{const sd=SPLIT.find(x=>x.id===s.day);return `<div class="line"><div><div class="t">${esc(sd?sd.name:s.day)}</div><div class="small">${shortDate(s.date)} · ${s.sets.length} sets</div></div>${s.sets.some(t=>t.pr)?`<span class="pr">${s.sets.filter(t=>t.pr).length} PR</span>`:'<span class="small">No PR</span>'}</div>`}).join('')}</div>`:`<p class="small" style="margin:0">Your finished workouts appear here.</p>`}
+ </section></div>`;
+}
+function gymLive(){
+ const c=S.cur,d=SPLIT[c.idx];const tot=c.ex.reduce((n,x)=>n+x.sets.length,0),dn=c.ex.reduce((n,x)=>n+x.sets.filter(t=>t.done).length,0),prs=prCount();
+ return `<div class="wrap" style="gap:12px">
+ <div class="status"><div class="statusrow"><div><h1>${esc(d.name)}</h1><div class="small num" style="font-size:15px">${dn} of ${tot} sets</div></div><button class="finish" data-a="finishopen">Finish</button></div>
+ <div class="goal ${prs?'hit':''}" id="goal">${prs?`<b>PR hit</b><b>${prs} this session</b>`:`<span>Session goal</span><b>Beat one target</b>`}</div></div>
+ <div class="exs">${c.ex.map((x,i)=>exCard(x,i)).join('')}</div>
+ <button class="linkbtn" data-a="discard">Cancel this workout</button>
+ </div>`;
+}
+function exCard(x,i){
+ const c=S.cur,e=EX[x.id],open=c.open===i,dn=x.sets.filter(t=>t.done).length,hasPR=x.sets.some(t=>t.pr);
+ const head=`<button class="exhead" data-a="openex" data-i="${i}" aria-expanded="${open}"><span class="n">${esc(e.n)}</span><span class="prg">${hasPR?'<span class="pr">PR</span>':''}${dn}/${x.sets.length}</span></button>`;
+ if(!open)return `<div class="ex" id="ex${i}">${head}</div>`;
+ const l=lastFor(x.id);
+ const recs=pareto(curRecs(x));
+ const ai=x.sets.findIndex(t=>!t.done);
+ const facts=`<div class="facts"><div><div class="label">Last${l.real?' · '+shortDate(l.date):''}</div><div class="v">${l.real?l.sets.map(s=>setTxt(s[0],s[1],s[2])).join('<br>'):'<span class="small">No session logged yet</span>'}</div></div><div><div class="label">PRs</div><div class="v">${recs.map(s=>setTxt(s[0],s[1],s[2])).join('<br>')||'—'}</div></div></div>`;
+ const rows=x.sets.map((t,si)=>{
+  if(t.done)return `<button class="setrow done ${flashId===x.id+si?'flash':''}" data-a="redo" data-i="${i}" data-j="${si}" aria-label="Edit set ${si+1}"><span>Set ${si+1}</span><span style="display:flex;gap:8px;align-items:center">${t.pr?'<span class="pr">PR</span>':''}<span class="sv">${setTxt(t.w,t.r,t.d)}</span></span></button>`;
+  if(si===ai)return activeSet(x,t,si,i);
+  return `<div class="setrow"><span class="small">Set ${si+1}</span><span class="sv" style="color:var(--mute)">${setTxt(t.w,t.r,t.d)}</span></div>`;
+ }).join('');
+ return `<div class="ex open" id="ex${i}">${head}<div class="exbody"><div class="setting ${(S.notes||{})[x.id]?'has':''}"><span class="label">Setting</span><input id="note-${x.id}" data-note="${x.id}" placeholder="Add rack or machine setting" value="${esc((S.notes||{})[x.id]||'')}" aria-label="Rack or machine setting" autocomplete="off"></div>${facts}<div class="sets">${rows}</div>
+ ${ai===-1?`<div class="row2"><button class="ghost" data-a="addset" data-i="${i}">Add set</button>${i<c.ex.length-1?`<button class="primary" style="min-height:48px;font-size:17px" data-a="nextex" data-i="${i}">Next exercise</button>`:`<button class="primary" style="min-height:48px;font-size:17px" data-a="finishopen">Finish</button>`}</div>`:`<div class="setctl"><button class="linkbtn" data-a="addset" data-i="${i}">Add set</button>${x.sets.length>3?`<button class="linkbtn" data-a="rmset" data-i="${i}">Remove set</button>`:''}</div>`}</div></div>`;
+}
+function activeSet(x,t,si,i){
+ const recs=curRecs(x),need=target(recs,t.w,t.d),willPR=isPR(recs,t.w,t.r,t.d);
+ const key=x.id+'-'+si,pop=willPR&&armedKey!==key?'armpop':'';armedKey=willPR?key:null;
+ return `<div class="active"><div class="beat"><span class="label">Set ${si+1}</span>${willPR?`<span class="need prsign ${pop}">This set is a PR</span>`:`<span class="need">Beat: ${setTxt(t.w,need,t.d)}</span>`}</div>
+ <div class="steppers">${stepper('kg',wTxt(t.w),'w','wval')}${stepper(t.d!=null?'Total reps':'Reps',t.r,'r')}</div>
+ ${t.d!=null?`<div class="steppers" style="align-items:end">${stepper('Drop to, kg',wTxt(t.d),'dw','dval')}<button class="ghost" style="min-height:62px" data-a="rmdrop">Remove drop</button></div>`:(t.w>0?`<button class="linkbtn" data-a="adddrop">Add drop set</button>`:'')}
+ <button class="primary ${willPR?'armbtn '+pop:''}" data-a="log" data-i="${i}" data-j="${si}">${willPR?'Log PR':'Log set'}</button></div>`;
+}
+
+/* ---------- food screens ---------- */
+const dayTotals=d=>d.entries.reduce((m,e)=>{m.k+=e.k;m.p+=e.p;m.c+=e.c;m.f+=e.f;return m},{k:0,p:0,c:0,f:0});
+function foodHome(){
+ const d=day(),g=S.goals[d.type],t=dayTotals(d),left=g.k-t.k;
+ const wd=new Date(today()+'T12:00').getDay();
+ const logged=new Set(d.entries.map(e=>e.meal));
+ const fits=m=>!m.weekdays||m.weekdays.includes(wd);
+ const usual=S.meals.filter(m=>m.usual&&fits(m)&&!logged.has(m.id));
+ const saved=S.meals.filter(m=>(!m.usual||!fits(m))&&!logged.has(m.id));
+ const mrow=m=>{const x=macros(m.items);return `<div class="usual"><button class="main" data-a="logmeal" data-m="${m.id}"><span style="min-width:0"><span class="t" style="font-weight:600;display:block">${esc(m.n)}</span><span class="small">${esc(m.sub||'')}</span></span><span class="plus">+ ${int(x.k)}</span></button><button class="edit" data-a="mealopen" data-m="${m.id}" aria-label="Adjust ${esc(m.n)}">${I.edit}</button></div>`};
+ const mac=(lbl,v,goal,min)=>{const ok=min&&v>=goal;return `<div><span class="label">${lbl}</span><span class="v">${int(v)}<small> / ${goal} g</small></span><div class="bar ${ok?'ok':''}"><i style="width:${Math.min(100,v/goal*100)}%"></i></div>${min?`<span class="${ok?'ok-t':'small'}" style="font-size:12px">${ok?'Goal reached':`${int(goal-v)} g to minimum`}</span>`:''}</div>`};
+ return `<div class="wrap">${topbar('Food','foodstats')}<div class="warnslot">${warnHTML()}</div>
+ <section class="macro">
+  <div class="kcalrow"><div><div class="label" style="margin-bottom:6px">Calories</div><div class="kcal">${int(t.k)}<small>/ ${int(g.k)}</small></div></div><div class="left">${left>=0?`${int(left)}<br><span class="small">kcal left</span>`:`${int(-left)}<br><span class="small">kcal over</span>`}</div></div>
+  <div class="ruler" role="img" aria-label="${int(t.k)} of ${int(g.k)} calories"><i style="width:${Math.min(100,t.k/g.k*100)}%"></i></div>
+  <div class="mac3">${mac('Protein',t.p,g.p,true)}${mac('Carbs',t.c,g.c)}${mac('Fat',t.f,g.f)}</div>
+  <div class="seg" role="group" aria-label="Day type"><button class="${d.type==='training'?'on':''}" data-a="dtype" data-t="training">Training day</button><button class="${d.type==='rest'?'on':''}" data-a="dtype" data-t="rest">Rest day</button></div>
+ </section>
+ <div class="searchbar"><button class="sbtn" data-a="open" data-s="add">Search or add food</button><button class="sbtn i" data-a="open" data-s="scan" aria-label="Scan barcode">${I.scan}</button><button class="sbtn i" data-a="open" data-s="dictate" aria-label="Dictate food">${I.mic}</button></div>
+ ${usual.length?`<section class="sect"><div class="secthead"><span class="label">Tap to log</span><span class="small">kcal</span></div><div class="list">${usual.map(mrow).join('')}</div></section>`:''}
+ ${SUPPS.length?`<section class="sect"><span class="label">Supplements</span><div class="supps">${SUPPS.map(s=>`<button class="supp ${d.supps.includes(s)?'on':''}" data-a="supp" data-t="${esc(s)}" aria-pressed="${d.supps.includes(s)}">${esc(s)}</button>`).join('')}</div></section>`:''}
+ <section class="sect"><div class="secthead"><span class="label">Today</span></div>${d.entries.length?`<div class="list">${d.entries.map((e,i)=>`<div class="line"><div><div class="t">${esc(e.n)}</div><div class="small num" style="font-size:14px">${int(e.p)} P · ${int(e.c)} C · ${int(e.f)} F</div></div><div style="display:flex;align-items:center;gap:10px"><span class="num" style="font-size:18px;font-weight:600">${int(e.k)}</span><button class="ico" style="width:36px;height:36px" data-a="rmentry" data-i="${i}" aria-label="Remove ${esc(e.n)}">${I.close}</button></div></div>`).join('')}</div>`:`<p class="small" style="margin:0">Nothing logged yet. Tap Breakfast above to start.</p>`}</section>
+ ${saved.length?`<section class="sect"><span class="label">Saved meals</span><div class="list">${saved.map(mrow).join('')}</div></section>`:''}
+ </div>`;
+}
+const addEntry=(n,items,mealId)=>{const m=macros(items),d=day();d.entries.push({n,meal:mealId||null,items,k:m.k,p:m.p,c:m.c,f:m.f});return m};
+function logMeal(m,items){
+ const before=JSON.stringify(day());
+ const x=addEntry(m.n,items||m.items,m.id);
+ if(m.supp)day().supps=SUPPS.slice();
+ save();sheet=null;render();
+ toast(`${m.n} · ${int(x.k)} kcal${m.supp?' · supplements ticked':''}`,()=>{S.days[today()]=JSON.parse(before);save();render()});
+}
+function toast(msg,act,label='Undo',ms=4500){const el=document.getElementById('toast');el.hidden=false;el.innerHTML=`<span>${esc(msg)}</span>${act?`<button id="undo">${esc(label)}</button>`:''}`;if(act)document.getElementById('undo').onclick=()=>{el.hidden=true;act()};clearTimeout(toastT);toastT=setTimeout(()=>{el.hidden=true},ms)}
+
+/* ---------- dictation / typed-amount parser ---------- */
+const NUMW={ein:1,eine:1,einen:1,eins:1,a:1,an:1,one:1,zwei:2,two:2,drei:3,three:3,vier:4,four:4,fünf:5,five:5,sechs:6,six:6,acht:8,eight:8};
+function matchFood(q){q=q.toLowerCase().trim();if(!q)return null;let best=null,score=0;allFoods().forEach(f=>{(f.a||[]).concat(f.n.toLowerCase()).forEach(a=>{let s=0;if(q===a)s=100+a.length;else if(a.length>=3&&new RegExp('(^|[^a-zäöüß])'+a.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).test(q))s=50+a.length;else if(q.length>=3&&a.startsWith(q))s=30+q.length;else if(q.length>=4&&a.includes(q))s=10+q.length;if(s>score){score=s;best=f}})});return best}
+function parseSpoken(text){
+ const parts=text.split(/\s*(?:,|;|\n|\bund\b|\band\b|\bplus\b|\bdazu\b|\bwith\b)\s*/i).filter(Boolean);
+ return parts.map(raw=>{
+  let s=raw.trim().toLowerCase().replace(/^(ich hatte|ich habe|i had|i ate)\s+/,'');
+  const w=s.split(/\s+/);if(NUMW[w[0]]){w[0]=String(NUMW[w[0]]);s=w.join(' ')}
+  const m=s.match(/^(\d+(?:[.,]\d+)?)\s*(kilogramm|kilo|kg|gramm|gram|grams|gr|g|milliliter|ml|liter|l|stück|stueck|stk|x|mal|scoops?|portion(?:en)?)?\b\.?\s*(?:von |of )?(.*)$/i);
+  let amt=null,un=null,name=s;if(m){amt=parseFloat(m[1].replace(',','.'));un=(m[2]||'').toLowerCase();name=m[3]}
+  const f=matchFood(name);if(!f)return{raw,food:null};
+  if(amt==null)amt=f.u==='pc'?1:100;
+  if(/^(kg|kilo)/.test(un)||un==='l'||un==='liter')amt*=1000;
+  if(f.u==='pc'&&/^(g|gr|gram|gramm|grams)$/.test(un))amt=Math.round(amt/f.g*10)/10;
+  if(f.u!=='pc'&&!un&&amt<10)amt=amt*(f.id==='egg'?1:100);
+  return{raw,food:f,amt};
+ });
+}
+
+/* ---------- charts ---------- */
+function chart(pts,opt={}){
+ const W=360,H=170,L=38,R=10,T=10,B=24;const ys=pts.map(p=>p.v).concat(opt.goal!=null?[opt.goal]:[]);
+ let lo=Math.min(...ys),hi=Math.max(...ys);if(hi===lo){hi+=1;lo-=1}const pad=(hi-lo)*.12;lo-=pad;hi+=pad;
+ const rawS=(hi-lo)/3,mag=Math.pow(10,Math.floor(Math.log10(rawS))),norm=rawS/mag,stepV=(norm<=1?1:norm<=2?2:norm<=5?5:10)*mag;lo=Math.floor(lo/stepV)*stepV;hi=Math.ceil(hi/stepV)*stepV;const tk=[];for(let v=lo;v<=hi+stepV/2;v+=stepV)tk.push(v);
+ const X=i=>L+(pts.length<2?(W-L-R)/2:i/(pts.length-1)*(W-L-R)),Y=v=>T+(1-(v-lo)/(hi-lo))*(H-T-B);
+ const d=pts.map((p,i)=>`${i?'L':'M'}${X(i).toFixed(1)} ${Y(p.v).toFixed(1)}`).join(' ');
+ const area=`${d} L${X(pts.length-1).toFixed(1)} ${H-B} L${X(0).toFixed(1)} ${H-B} Z`;
+ const dec=stepV<1?1:0;
+ const last=pts[pts.length-1];
+ return `<div class="sect" data-chart='${esc(JSON.stringify({pts,L,R,W,unit:opt.unit||''}))}'>
+ <div class="readout"><span class="small rd-d">${shortDate(last.d)}</span><span class="num rd-v">${fmt(last.v)} <span class="small">${opt.unit||''}</span></span></div>
+ <svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opt.label||'Chart')}">
+ ${tk.map(v=>`<line x1="${L}" x2="${W-R}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" stroke="var(--line)" stroke-width="1"/><text x="${L-6}" y="${(Y(v)+4).toFixed(1)}" text-anchor="end" fill="var(--mute)" font-size="11">${v.toLocaleString('en-US',{maximumFractionDigits:dec})}</text>`).join('')}
+ ${opt.goal!=null?`<line x1="${L}" x2="${W-R}" y1="${Y(opt.goal).toFixed(1)}" y2="${Y(opt.goal).toFixed(1)}" stroke="var(--ink)" stroke-width="1" stroke-dasharray="4 4"/><text x="${W-R}" y="${(Y(opt.goal)-5).toFixed(1)}" text-anchor="end" fill="var(--ink)" font-size="11">Goal</text>`:''}
+ <path d="${area}" fill="var(--acc)" opacity=".1"/><path d="${d}" fill="none" stroke="var(--acc)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+ <circle class="dotm" cx="${X(pts.length-1).toFixed(1)}" cy="${Y(last.v).toFixed(1)}" r="4.5" fill="var(--acc)" stroke="var(--bg)" stroke-width="2"/>
+ <text x="${L}" y="${H-6}" fill="var(--mute)" font-size="11">${shortDate(pts[0].d)}</text><text x="${W-R}" y="${H-6}" text-anchor="end" fill="var(--mute)" font-size="11">${shortDate(last.d)}</text>
+ </svg></div>`;
+}
+/* real data only; a curve needs at least two points */
+const chartOr=(pts,opt,msg)=>pts.length>=2?chart(pts,opt):`<p class="callout" style="margin:0">${msg}</p>`;
+function strengthSeries(id){const real=[];S.sessions.forEach(s=>{const t=s.sets.filter(x=>x.ex===id);if(t.length)real.push({d:s.date,v:Math.round(Math.max(...t.map(x=>e1rm(x.w,x.r)))*10)/10})});return real}
+const bwSeries=()=>S.bw.map(b=>({d:b.d,v:b.v}));
+const foodDays=()=>Object.keys(S.days).sort().filter(k=>S.days[k].entries.length);
+const foodSeries=key=>foodDays().map(k=>({d:k,v:Math.round(dayTotals(S.days[k])[key])}));
+
+/* ---------- sheets ---------- */
+const head=(t,backTo)=>`<div class="shead"><button class="ico" data-a="${backTo?'open':'close'}" ${backTo?`data-s="${backTo}"`:''} aria-label="${backTo?'Back':'Close'}">${backTo?I.back:I.close}</button><h2>${esc(t)}</h2></div>`;
+const totalsHTML=m=>`<div class="totals"><div><div class="label">kcal</div><div class="v">${int(m.k)}</div></div><div><div class="label">Protein</div><div class="v">${int(m.p)} g</div></div><div><div class="label">Carbs</div><div class="v">${int(m.c)} g</div></div><div><div class="label">Fat</div><div class="v">${int(m.f)} g</div></div></div>`;
+const tagNote=f=>f.tag==='placeholder'?'<span class="sample">Placeholder</span>':f.tag==='typical'?'<span class="small">Typical value</span>':f.tag==='pack'?'<span class="small">From your package</span>':f.tag==='label'?'<span class="small">Product listing</span>':f.tag==='off'?`<span class="small">Open Food Facts${f.bc?' · '+esc(f.bc):''}</span>`:'<span class="small">Your entry</span>';
+const shakeMeal=()=>S.meals.find(m=>m.id==='shake');
+const SH={
+ finish(){const prs=[];S.cur.ex.forEach(x=>x.sets.forEach(t=>{if(t.pr)prs.push(`${EX[x.id].n}: ${setTxt(t.w,t.r,t.d)}`)}));const dn=S.cur.ex.reduce((n,x)=>n+x.sets.filter(t=>t.done).length,0);const sm=shakeMeal();
+  return head('Finish workout')+`<div class="sbody">
+  <div class="tile"><div class="label">PRs this session</div><div class="v">${prs.length}</div><div class="small" style="margin-top:8px">${prs.length?prs.map(esc).join('<br>'):'No PR this time. The next session has the same targets.'}</div></div>
+  <div class="small num" style="font-size:15px">${dn} sets logged</div>
+  <div class="field">${stepper('Body weight, kg',fmt(sheet.bw),'bw','bwval')}</div>
+  ${sm?`<button class="look ${sheet.shake?'on':''}" data-a="shake" aria-pressed="${!!sheet.shake}"><span style="flex:1;font-weight:600">Add whey shake to Food</span><span class="plus">${sheet.shake?'Added':'+ '+int(macros(sm.items).k)}</span></button>`:''}
+  <button class="primary" data-a="finish" data-bw="1">Save workout</button><button class="linkbtn" data-a="finish">Save without body weight</button></div>`},
+ add(){return head('Add food')+`<div class="sbody"><input class="input" id="q" placeholder="Search in English or German" autocomplete="off" value="${esc(sheet.q||'')}" aria-label="Search food" enterkeyhint="search">
+  ${draft?`<button class="look on" data-a="open" data-s="compose"><span style="flex:1"><span style="font-weight:600;display:block">${esc(draft.name||'New meal')}</span><span class="small">${draft.items.length} ingredients · ${int(macros(draft.items).k)} kcal</span></span><span class="plus">Review</span></button>`:`<button class="ghost" data-a="newdraft">Build a new meal from ingredients</button>`}
+  <div id="results">${resultsHTML(sheet.q||'')}</div></div>`},
+ dictate(){return head('Dictate food')+`<div class="sbody"><p class="callout" style="margin:0">Tap the box, then the microphone on the iPhone keyboard, and speak. German and English both work. Typing works too.</p>
+  <input class="input" id="dict" placeholder="200 g Skyr und 50 g Haferflocken" autocomplete="off" value="${esc(sheet.q||'')}" aria-label="Dictated food"><div id="dres">${dictHTML(sheet.q||'')}</div></div>`},
+ scan(){return head('Scan barcode')+`<div class="sbody"><div class="scanv"><video id="scanvid" playsinline muted autoplay></video><div class="aim"></div></div><p class="small" id="scanmsg" style="margin:0">Starting camera …</p>
+  <div class="field"><label class="label" for="bcin">Or type the barcode number</label><div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px"><input class="input" id="bcin" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="8 to 13 digits" enterkeyhint="search"><button class="ghost" data-a="bclook">Look up</button></div></div>
+  <label class="ghost" for="scanfile">Take a photo of the barcode instead</label><input type="file" id="scanfile" class="vh" accept="image/*" capture="environment"></div>`},
+ amount(){const f=food(sheet.food),a=sheet.amt,m=macros([[f.id,a]]);return head(f.n,'add')+`<div class="sbody"><div>${tagNote(f)}</div><div class="field">${stepper('Amount, '+(f.u==='pc'?'pieces':f.u),fmt(a),'amt','amtval')}</div>${totalsHTML(m)}
+  ${draft?`<button class="primary" data-a="todraft">Add to ${esc(draft.name||'new meal')}</button>`:`<button class="primary" data-a="logfood">Log for today</button><button class="ghost" data-a="draftwith">Start a new meal with this</button>`}</div>`},
+ meal(){const m=S.meals.find(x=>x.id===sheet.meal),items=sheet.items,tot=macros(items);return head(m.n)+`<div class="sbody">${totalsHTML(tot)}
+  ${m.batch?`<p class="callout" style="margin:0">Amounts are per portion. Whole batch of ${m.batch}: ${m.items.map(([id,a])=>{const f=food(id);return f.u==='pc'?`${fmt(a*m.batch)} × ${f.n}`:`${fmt(a*m.batch)} ${f.u} ${f.n}`}).join(', ')}.</p>`:''}
+  <div>${items.map(([id,a],i)=>{const f=food(id);return `<div class="item"><div class="tt"><span>${esc(f.n)}</span><span>${f.tag==='placeholder'?'<span class="sample">Placeholder</span>':''}</span></div><div class="stpc"><button data-a="mi" data-i="${i}" data-d="-1" aria-label="Less">−</button><div class="val">${amtTxt(f,a)}</div><button data-a="mi" data-i="${i}" data-d="1" aria-label="More">+</button></div></div>`}).join('')}</div>
+  <button class="primary" data-a="logadj">Log for today</button><button class="ghost" data-a="savemeal">Keep these amounts for next time</button>
+  ${!BASE_MEALS.includes(m.id)?`<button class="linkbtn" data-a="delmeal">Delete this meal</button>`:''}</div>`},
+ compose(){const m=macros(draft.items);return head('New meal','add')+`<div class="sbody"><div class="field"><label class="label" for="dname">Meal name</label><input class="input" id="dname" placeholder="Linsen-Dal" value="${esc(draft.name||'')}" autocomplete="off"></div>${totalsHTML(m)}
+  <div>${draft.items.map(([id,a],i)=>{const f=food(id);return `<div class="item"><div class="tt"><span>${esc(f.n)}</span><button class="small" style="text-decoration:underline;min-height:28px" data-a="dri" data-i="${i}">Remove</button></div><div class="stpc"><button data-a="dr" data-i="${i}" data-d="-1" aria-label="Less">−</button><div class="val">${amtTxt(f,a)}</div><button data-a="dr" data-i="${i}" data-d="1" aria-label="More">+</button></div></div>`}).join('')||'<p class="small">Add the first ingredient.</p>'}</div>
+  <button class="ghost" data-a="open" data-s="add">Add ingredient</button><button class="primary" data-a="savedraft">Save meal and log it</button><button class="linkbtn" data-a="canceldraft">Discard meal</button></div>`},
+ newfood(){const p=sheet.pre||{},off=p.tag==='off',v=k=>p[k]==null?'':p[k];return head(off?'Check product':'New food','add')+`<div class="sbody">${sheet.why?`<p class="callout" style="margin:0">${esc(sheet.why)}</p>`:''}<div class="field"><label class="label" for="nfn">Name</label><input class="input" id="nfn" value="${esc(p.n||sheet.q||'')}" autocomplete="off"></div>${p.bc?`<p class="small" style="margin:0">Barcode ${esc(p.bc)}${p.qty?' · '+esc(p.qty):''}</p>`:''}
+  <div class="seg" role="group" aria-label="Unit"><button class="${(p.u||'g')!=='ml'?'on':''}" data-a="nfu" data-t="g">Per 100 g</button><button class="${p.u==='ml'?'on':''}" data-a="nfu" data-t="ml">Per 100 ml</button></div>
+  <div class="row2">${[['k','kcal'],['p','Protein, g'],['c','Carbs, g'],['f','Fat, g']].map(([id,l])=>{const miss=off&&p[id]==null;return `<div class="field"><label class="label" for="nf${id}">${l}</label><input class="input ${miss?'miss':''}" id="nf${id}" inputmode="decimal" value="${v(id)}" placeholder="${miss?'Missing':''}"></div>`}).join('')}</div>${p.note?`<p class="small" style="margin:0">${esc(p.note)}</p>`:''}<button class="primary" data-a="savefood">Save food</button></div>`},
+ goals(){const g=S.goals;const fld=(t,k,l)=>`<div class="field"><label class="label" for="g${t}${k}">${l}</label><input class="input num" id="g${t}${k}" inputmode="numeric" value="${g[t][k]}" data-g="${t}.${k}"></div>`;
+  return head('Food goals','settings')+`<div class="sbody"><div class="field"><span class="label">Direction</span><div class="chips" style="grid-template-columns:repeat(2,1fr)">${PHASES.map(p=>`<button class="chip ${S.phase===p[0]?'on':''}" data-a="phase" data-t="${p[0]}">${p[1]}</button>`).join('')}</div></div>
+  <p class="callout" style="margin:0">Starting estimate: maintenance about ${int(MAINT)} kcal, plus your direction. Your body weight trend will show within a few weeks whether to move it.</p>
+  ${['training','rest'].map(t=>`<div class="sect"><span class="label">${t==='training'?'Training day':'Rest day'}</span><div class="row2">${fld(t,'k','Calories')}${fld(t,'p','Protein min, g')}${fld(t,'c','Carbs, g')}${fld(t,'f','Fat, g')}</div></div>`).join('')}</div>`},
+ settings(){
+  const dtA=Object.values(DT.auto),dtM=Object.values(DT.manual).filter(x=>x.state);
+  return head('Settings')+`<div class="sbody"><button class="look" data-a="open" data-s="goals"><span style="flex:1;font-weight:600">Food goals</span><span class="small">${int(S.goals.training.k)} / ${int(S.goals.rest.k)} kcal</span></button>
+  <button class="look" data-a="open" data-s="devtest"><span style="flex:1;font-weight:600">Device test</span><span class="small">${dtA.length||dtM.length?`${dtA.filter(x=>x.ok===true).length+dtM.filter(x=>x.state==='pass').length} pass · ${dtA.filter(x=>x.ok===false).length+dtM.filter(x=>x.state==='fail').length} fail`:'Not run yet'}</span></button>
+  <div class="sect"><span class="label">Backup</span>
+   <div class="callout" style="margin:0">${GHC?`Last successful backup: <b>${ago(BK.lastOk)}</b>${BK.lastOk?' · '+stamp(BK.lastOk):''}<br>${BK.path?'File: '+esc(BK.path)+'<br>':''}Repository: ${esc(GHC.repo)}${BK.lastErr?`<br><span style="color:var(--bad)">Last attempt failed: ${esc(BK.lastErr)}</span>`:''}`:'GitHub is not connected, so nothing is backed up automatically. Export a file regularly or connect GitHub.'}</div>
+   <div class="row2"><button class="ghost" data-a="bknow" ${GHC?'':'disabled'}>Back up now</button><button class="ghost" data-a="export">Export file</button></div>
+   <div class="row2"><button class="ghost" data-a="open" data-s="restore" ${GHC?'':'disabled'}>Restore from GitHub</button><label class="ghost" for="impfile">Restore from file</label></div><input type="file" id="impfile" class="vh" accept=".json,application/json">
+   <button class="linkbtn" data-a="open" data-s="token">${GHC?'Change GitHub token':'Connect GitHub'}</button></div>
+  <div class="sect"><span class="label">Test data</span>${sheet.confirm?`<p class="small" style="margin:0">This deletes ${S.sessions.length} logged workouts, all logged meals and body weights on this phone. The PR list from the seed data stays. Backups on GitHub are not touched.</p><div class="row2"><button class="ghost" data-a="reset">Delete test data</button><button class="ghost" data-a="noconfirm">Keep it</button></div>`:`<button class="ghost" data-a="askreset">Delete test data</button>`}</div>
+  <p class="small" style="margin:0">Version ${APP_VERSION} · storage ${PERSIST.result===true||PERSIST.before===true?'persistent':'not marked persistent'}${saveErr?` · <span style="color:var(--bad)">save error: ${esc(saveErr.message||saveErr)}</span>`:''}</p></div>`},
+ token(){return head(GHC?'Change GitHub token':'Connect GitHub','settings')+`<div class="sbody">${tokenForm(GHC?GHC.repo:defaultRepo())}<button class="primary" data-a="tokensave">Check and save</button><p class="small" id="tokmsg" style="margin:0">${esc(sheet.msg||'')}</p></div>`},
+ restore(){const l=sheet.list;return head('Restore from GitHub','settings')+`<div class="sbody">${sheet.err?`<p class="callout bad" style="margin:0">${esc(sheet.err)}</p>`:''}${sheet.pick?`<p class="callout" style="margin:0">Replace everything on this phone with the backup <b>${esc(sheet.pick)}</b>? The current state is backed up first.</p><button class="primary" data-a="restoreyes">Restore this backup</button><button class="ghost" data-a="restoreno">Cancel</button>`:l==null?'<p class="small">Loading the backup list …</p>':l.length?`<p class="small" style="margin:0">Newest first. One file per day; GitHub also keeps every earlier version.</p><div class="list">${l.map(f=>`<button class="line" data-a="restorepick" data-n="${esc(f.name)}"><span class="t">${esc(f.name.replace(/\.json$/,''))}</span><span class="small">${Math.round(f.size/1024)} KB</span></button>`).join('')}</div>`:'<p class="small">No backups in the repository yet.</p>'}</div>`},
+ restorefile(){const p=sheet.parsed;return head('Restore from file','settings')+`<div class="sbody"><p class="callout" style="margin:0">${p.kind==='backup'?`Backup from <b>${esc(stamp(Date.parse(p.when))||'unknown date')}</b>: ${p.state.sessions.length} workouts, ${Object.keys(p.state.days).filter(k=>p.state.days[k].entries.length).length} days with food.`:'Seed data: starts fresh with no logged history.'} This replaces everything on this phone.</p><button class="primary" data-a="restorefileyes">Replace data on this phone</button><button class="ghost" data-a="open" data-s="settings">Cancel</button></div>`},
+ devtest(){return head('Device test','settings')+`<div class="sbody">${devtestHTML()}</div>`},
+ gymstats(){const id=sheet.ex||SPLIT[0].ex[0].id;const st=strengthSeries(id),bw=bwSeries(),isBW=EX[id].bw||EX[id].rec.every(r=>r[0]===0);
+  const moves=Object.keys(EX).map(k=>{const s=strengthSeries(k);return s.length>=2?{k,gain:(s[s.length-1].v/s[0].v-1)*100}:null}).filter(Boolean).sort((a,b)=>b.gain-a.gain).slice(0,3);
+  const recs=pareto(allRecs(id));const sess=S.sessions.length,withPR=S.sessions.filter(s=>s.sets.some(t=>t.pr)).length;
+  return head('Gym statistics')+`<div class="sbody">
+  <div class="tiles"><div class="tile"><div class="label">Sessions</div><div class="v">${sess}</div></div><div class="tile"><div class="label">With a PR</div><div class="v">${withPR}</div></div></div>
+  <div class="field"><label class="label" for="exsel">Exercise</label><select class="input" id="exsel">${SPLIT.map(d=>`<optgroup label="${esc(d.name)}">${d.ex.map(e=>`<option value="${e.id}" ${e.id===id?'selected':''}>${esc(e.n)}</option>`).join('')}</optgroup>`).join('')}</select></div>
+  <div class="sect"><span class="label">${isBW?'Best reps':'Estimated 1RM'}</span>${chartOr(st,{unit:isBW?'reps':'kg',label:'Strength over time'},'The curve appears once this exercise is logged in two sessions.')}</div>
+  <div class="sect"><span class="label">PR list</span><div class="list">${recs.map(r=>`<div class="line"><span>${r[0]===0?'Bodyweight':r[2]!=null&&r[2]<r[0]?fmt(r[0])+' → '+fmt(r[2])+' kg':fmt(r[0])+' kg'}</span><span class="num" style="font-size:18px;font-weight:600">${r[1]} ${r[1]===1?'rep':'reps'}</span></div>`).join('')||'<div class="line"><span class="small">No records yet</span></div>'}</div></div>
+  <div class="sect"><span class="label">Most improved</span>${moves.length?`<div class="list">${moves.map(m=>`<div class="line"><span>${esc(EX[m.k].n)}</span><span class="num" style="font-size:18px;font-weight:600">${m.gain>=0?'+':''}${m.gain.toFixed(1)}%</span></div>`).join('')}</div>`:'<p class="callout" style="margin:0">Appears once exercises have two logged sessions.</p>'}</div>
+  <div class="sect"><span class="label">Body weight</span>${chartOr(bw,{unit:'kg',label:'Body weight over time'},bw.length?`${fmt(bw[0].v)} kg on ${shortDate(bw[0].d)}. The curve starts with the second entry.`:'Enter body weight when you finish a workout.')}</div></div>`},
+ foodstats(){const k=foodSeries('k'),p=foodSeries('p'),bw=bwSeries(),n=k.length;const pg=d=>S.goals[(S.days[d]||{}).type||'training'].p;const hit=p.filter(x=>x.v>=pg(x.d)).length;const avg=n?k.reduce((a,b)=>a+b.v,0)/n:0;
+  return head('Food statistics')+`<div class="sbody"><p class="small" style="margin:0">Only days with logged food count.</p><div class="tiles"><div class="tile"><div class="label">Average kcal</div><div class="v">${n?int(avg):'—'}</div></div><div class="tile"><div class="label">Protein goal hit</div><div class="v">${n?`${hit}/${n}`:'—'}</div></div></div>
+  <div class="sect"><span class="label">Calories</span>${chartOr(k,{unit:'kcal',goal:S.goals.training.k,label:'Calories per day'},'The curve appears after two days with logged food.')}</div>
+  <div class="sect"><span class="label">Protein</span>${chartOr(p,{unit:'g',goal:S.goals.training.p,label:'Protein per day'},'The curve appears after two days with logged food.')}</div>
+  <div class="sect"><span class="label">Body weight</span>${chartOr(bw,{unit:'kg',label:'Body weight over time'},'The curve appears after two body weight entries.')}<p class="small" style="margin:0">Read this next to calories to judge your goal. Slow upward drift fits a lean gain.</p></div></div>`}
+};
+function resultsHTML(q){
+ const n=q.toLowerCase().trim();
+ const ms=S.meals.filter(m=>!n||m.n.toLowerCase().includes(n)||(m.sub||'').toLowerCase().includes(n));
+ const fs=allFoods().filter(f=>!n||f.n.toLowerCase().includes(n)||(f.a||[]).some(a=>a.includes(n))||f.bc===n);
+ let h='';
+ if(ms.length&&!draft)h+=`<div class="sect"><span class="label">Your meals</span><div class="list">${ms.map(m=>`<button class="line" data-a="mealopen" data-m="${m.id}"><span class="t">${esc(m.n)}</span><span class="plus">${int(macros(m.items).k)}</span></button>`).join('')}</div></div>`;
+ if(fs.length)h+=`<div class="sect" style="margin-top:16px"><span class="label">Foods</span><div class="list">${fs.slice(0,30).map(f=>`<button class="line" data-a="foodopen" data-f="${f.id}"><span style="min-width:0"><span class="t" style="display:block">${esc(f.n)}</span><span class="small">${f.u==='pc'?'per piece':'per 100 '+f.u} · ${fmt(f.p||0)} g protein</span></span><span class="plus">${int(f.k||0)}</span></button>`).join('')}</div></div>`;
+ if(n){
+  const o=sheet&&sheet.off&&sheet.off.q===n?sheet.off:null;
+  h+=`<div class="sect" style="margin-top:16px"><span class="label">Open Food Facts</span>${!o?`<button class="ghost" data-a="offsearch">Search Open Food Facts for “${esc(q.trim())}”</button>`:o.busy?'<p class="small" style="margin:0">Searching …</p>':o.err?`<p class="callout bad" style="margin:0">${esc(o.err)}</p><button class="ghost" data-a="offsearch">Try again</button>`:o.list.length?`<div class="list">${o.list.map((f,i)=>`<button class="line" data-a="offpick" data-i="${i}"><span style="min-width:0"><span class="t" style="display:block">${esc(f.n)}</span><span class="small">per 100 ${f.u} · ${f.p==null?'protein missing':fmt(f.p)+' g protein'}</span></span><span class="plus">${f.k==null?'?':int(f.k)}</span></button>`).join('')}</div>`:'<p class="small" style="margin:0">No products found.</p>'}</div>`;
+  h+=`<button class="ghost" style="width:100%;margin-top:14px" data-a="newfood">Create “${esc(q)}”</button>`;
+ }
+ return h;
+}
+function dictHTML(q){
+ if(!q.trim())return '<p class="small" style="margin:0">Try: 200 g Skyr, 2 Eier und 1 Banane</p>';
+ const r=parseSpoken(q),ok=r.filter(x=>x.food),items=ok.map(x=>[x.food.id,x.amt]),m=macros(items);
+ return `<div class="list">${r.map(x=>x.food?`<div class="line"><span>${esc(x.food.n)}</span><span class="num" style="font-size:17px;font-weight:600;white-space:nowrap">${amtTxt(x.food,x.amt)}</span></div>`:`<div class="line"><span class="small">Not recognised: ${esc(x.raw)}</span></div>`).join('')}</div>${ok.length?`<div style="margin-top:14px;display:flex;flex-direction:column;gap:12px">${totalsHTML(m)}<button class="primary" data-a="logdict">Confirm and log</button></div>`:''}`;
+}
+
+/* ---------- reward popups ---------- */
+const PICPOS={'ruhl-1':'63% 30%','ruhl-2':'50% 8%','ruhl-3':'42% 0%','ruhl-4':'60% 8%','ruhl-5':'40% 8%','coleman-1':'50% 8%','coleman-2':'50% 18%','coleman-3':'48% 0%','coleman-4':'38% 30%','coleman-5':'35% 0%'};
+const hapt=()=>{try{document.getElementById('hap').click()}catch(e){}if(navigator.vibrate)navigator.vibrate([40,30,120,40,60])};
+let PICS={ruhl:[],coleman:[]};
+const HYPE={protein:{set:'ruhl',kicker:'Protein goal',btn:'Des Bedarfs'},weight:{set:'coleman',kicker:'Weight PR',btn:'Lightweight, baby!'},rep:{set:'ruhl',kicker:'Rep PR',btn:'Drück, du Sau!'}};
+const hypeQ=[],lastPic={};
+function hype(kind,cap){hypeQ.push({kind,cap});if(document.getElementById('hype').hidden)nextHype()}
+function nextHype(){
+ const el=document.getElementById('hype'),h=hypeQ.shift();if(!h){el.hidden=true;el.innerHTML='';return}
+ const c=HYPE[h.kind],arr=PICS[c.set]||[];let i=Math.floor(Math.random()*arr.length);if(arr.length>1&&i===lastPic[c.set])i=(i+1)%arr.length;lastPic[c.set]=i;const pic=arr[i];
+ const bits=Array.from({length:40},(_,k)=>{const a=k/40*Math.PI*2+(k%3)*.13,d=170+(k*73)%320;return `<i class="hbit" style="--x:${Math.round(Math.cos(a)*d)}px;--y:${Math.round(Math.sin(a)*d)}px;--r:${(k*97)%540}deg"></i>`}).join('');
+ el.innerHTML=`<div class="hstage" role="dialog" aria-label="${esc(c.kicker)}"><div class="himgwrap">${pic?`<img src="${pic.url}" alt="" style="object-position:${PICPOS[pic.name]||'50% 10%'}" onerror="this.style.display='none'">`:''}<div class="hshade"></div><div class="hkicker">${esc(c.kicker)}</div><div class="hcap">${esc(h.cap)}</div></div><button class="hbtn" data-a="hypeclose" disabled>${esc(c.btn)}</button></div><i class="hflash"></i><i class="hring"></i><i class="hring r2"></i>${bits}`;
+ hapt();[250,300,360,440].forEach(t=>setTimeout(hapt,t));
+ el.hidden=false;setTimeout(()=>{const b=el.querySelector('.hbtn');if(b)b.disabled=false},850);
+}
+function checkProtein(){const k=today();const d=S.days[k];if(!d)return;const g=S.goals[d.type].p,t=dayTotals(d).p;if(t<g){if(d.pShown){d.pShown=false;save()}return}if(!d.pShown){d.pShown=true;save();hype('protein',`${int(t)} g of ${int(g)} g today`)}}
+
+/* ---------- photos (stored on the phone, downloaded from the private repo) ---------- */
+async function loadPhotos(){Object.values(PICS).flat().forEach(p=>URL.revokeObjectURL(p.url));PICS={ruhl:[],coleman:[]};const keys=(await DB.keys('photos')).map(String).sort();for(const k of keys){const v=await DB.get('photos',k);if(!v||!v.buf)continue;const url=URL.createObjectURL(new Blob([v.buf],{type:v.type||'image/jpeg'}));const set=k.split('-')[0];(PICS[set]=PICS[set]||[]).push({url,name:k})}Object.values(PICS).flat().forEach(p=>{const i=new Image();i.src=p.url})}
+async function fetchPhotos(cfg,progress){const list=(await ghList('hype',cfg)).filter(f=>f.type==='file'&&/\.(jpe?g|png|webp)$/i.test(f.name));let n=0;for(const f of list){const b=await ghBin(f.path,cfg);await DB.set('photos',f.name.replace(/\.[^.]+$/,''),{type:/png$/i.test(f.name)?'image/png':/webp$/i.test(f.name)?'image/webp':'image/jpeg',buf:b});if(progress)progress(++n,list.length)}return list.length}
+
+/* ---------- GitHub: private data repo, read and write with a fine-grained token ---------- */
+const GH_API='https://api.github.com';
+const enc64=str=>{const b=new TextEncoder().encode(str);let s='';for(let i=0;i<b.length;i+=0x8000)s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(s)};
+const dec64=b64=>new TextDecoder().decode(Uint8Array.from(atob(b64.replace(/\s/g,'')),c=>c.charCodeAt(0)));
+const cpath=p=>p.split('/').map(encodeURIComponent).join('/');
+const defaultRepo=()=>/\.github\.io$/i.test(location.hostname)?location.hostname.split('.')[0]+'/gym-app-data':'';
+async function gh(path,{method='GET',body,raw,cfg}={}){
+ const g=cfg||GHC;if(!g||!g.token)throw new Error('GitHub is not connected');
+ const h={'Accept':raw?'application/vnd.github.raw+json':'application/vnd.github+json','Authorization':'Bearer '+g.token,'X-GitHub-Api-Version':'2022-11-28'};
+ if(body)h['Content-Type']='application/json';
+ try{return await fetch(GH_API+path,{method,headers:h,body:body?JSON.stringify(body):undefined,cache:'no-store'})}catch(e){throw new Error('No connection to GitHub')}
+}
+async function ghErr(r,what){let m='';try{m=(await r.json()).message||''}catch(e){}const hint=r.status===401?'The token was not accepted. It may be mistyped or expired.':r.status===403?'The token lacks permission. It needs Contents: Read and write.':r.status===404?'Not found. Check the repository name and that the token includes this repository.':'';return new Error(`${what}: HTTP ${r.status}. ${hint||m}`)}
+const cURL=(path,cfg)=>`/repos/${(cfg||GHC).repo}/contents/${cpath(path)}`;
+async function ghRepo(cfg){const r=await gh(`/repos/${cfg.repo}`,{cfg});if(!r.ok)throw await ghErr(r,'Repository check');return r.json()}
+async function ghMeta(path,cfg){const r=await gh(cURL(path,cfg),{cfg});if(r.status===404)return null;if(!r.ok)throw await ghErr(r,'Reading '+path);return r.json()}
+async function ghText(path,cfg){const j=await ghMeta(path,cfg);if(!j)return null;if(j.encoding==='base64'&&j.content)return{sha:j.sha,text:dec64(j.content)};const r=await gh(cURL(path,cfg),{raw:true,cfg});if(!r.ok)throw await ghErr(r,'Reading '+path);return{sha:j.sha,text:await r.text()}}
+async function ghBin(path,cfg){const r=await gh(cURL(path,cfg),{raw:true,cfg});if(!r.ok)throw await ghErr(r,'Reading '+path);return r.arrayBuffer()}
+async function ghList(dir,cfg){const j=await ghMeta(dir,cfg);return Array.isArray(j)?j:[]}
+async function ghPut(path,text,message,sha){const go=s=>gh(cURL(path),{method:'PUT',body:Object.assign({message,content:enc64(text)},s?{sha:s}:{})});let r=await go(sha);if(r.status===409||r.status===422){const m=await ghMeta(path);r=await go(m&&m.sha)}if(!r.ok)throw await ghErr(r,'Saving '+path);return(await r.json()).content.sha}
+
+/* ---------- backup: one readable JSON file per day in backups/, git keeps every version ---------- */
+const stateForHash=()=>{const o=Object.assign({},S);delete o.tab;return JSON.stringify(o)};
+async function sha256(s){const d=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return Array.from(new Uint8Array(d),b=>b.toString(16).padStart(2,'0')).join('')}
+const backupDoc=()=>({format:'gym-app-backup',formatVersion:1,app:APP_VERSION,createdAt:new Date().toISOString(),day:today(),state:S});
+const saveBK=()=>DB.set('kv','backupMeta',BK).catch(()=>{});
+let bkBusy=null;
+const backup=reason=>bkBusy||(bkBusy=doBackup(reason).finally(()=>{bkBusy=null;refreshWarn()}));
+async function doBackup(reason){
+ if(!GHC)return{ok:false,msg:'GitHub is not connected'};
+ if(!navigator.onLine)return{ok:false,msg:'Offline. The backup runs when you are online again.'};
+ BK.lastTry=Date.now();
+ try{
+  const h=await sha256(stateForHash()),path=`backups/${today()}.json`;
+  if(BK.hash===h&&BK.path){const m=await ghMeta(BK.path);if(m&&m.sha===BK.sha){Object.assign(BK,{lastOk:Date.now(),lastErr:null,lastMsg:'No changes since the last backup'});await saveBK();return{ok:true,msg:BK.lastMsg}}}
+  let sha=BK.path===path?BK.sha:undefined;if(!sha){const m=await ghMeta(path);sha=m?m.sha:undefined}
+  const nsha=await ghPut(path,JSON.stringify(backupDoc(),null,1),`Backup ${today()} ${new Date().toTimeString().slice(0,5)} (${reason})`,sha);
+  Object.assign(BK,{path,sha:nsha,hash:h,lastOk:Date.now(),lastErr:null,lastMsg:'Saved to '+path,count:(BK.count||0)+1});await saveBK();return{ok:true,msg:BK.lastMsg};
+ }catch(e){BK.lastErr=e.message||String(e);await saveBK();return{ok:false,msg:BK.lastErr}}
+}
+function parseImport(text){let j;try{j=JSON.parse(text)}catch(e){throw new Error('This file is not valid JSON')}
+ if(j&&j.format==='gym-app-backup'&&j.state&&j.state.cfg)return{kind:'backup',state:j.state,when:j.createdAt};
+ if(j&&Array.isArray(j.split)&&Array.isArray(j.foods))return{kind:'seed',state:stateFromCfg(cfgFromSeed(j))};
+ throw new Error('This file is neither a backup nor seed data')}
+async function adoptState(st){S=Object.assign(stateFromCfg(st.cfg),st);applyCfg();window.__pick=null;draft=null;await DB.set('kv','state',S);BK.hash=null;await saveBK()}
+
+/* ---------- file export through the share sheet ---------- */
+function exportFile(){const name=`gym-backup-${today()}.json`,txt=JSON.stringify(backupDoc(),null,1);let file;try{file=new File([txt],name,{type:'application/json'})}catch(e){file=null}
+ if(file&&navigator.canShare&&navigator.canShare({files:[file]})){navigator.share({files:[file],title:name}).then(()=>{EXP={ok:true,how:'share sheet',at:Date.now()};toast('Exported '+name)}).catch(e=>{EXP={ok:e.name==='AbortError'?null:false,how:'share sheet',err:e.name+': '+e.message,at:Date.now()};toast(e.name==='AbortError'?'Export cancelled':'Export failed: '+e.name)});return}
+ const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type:'application/json'}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},5000);EXP={ok:true,how:'download link',at:Date.now()}}
+
+/* ---------- Open Food Facts: cached, rate-limited, nutrition fields optional ---------- */
+const OFF_P='https://world.openfoodfacts.org/api/v3/product/',OFF_S='https://de.openfoodfacts.org/cgi/search.pl';
+const OFF_FIELDS='code,product_name,product_name_de,product_name_en,brands,quantity,nutriments';
+const LIM={p:{max:15,t:[]},s:{max:10,t:[]}};
+function take(kind){const L=LIM[kind],now=Date.now();L.t=L.t.filter(x=>now-x<60000);if(L.t.length>=L.max){const w=Math.ceil((60000-(now-L.t[0]))/1000);throw new Error(`Open Food Facts allows ${L.max} ${kind==='p'?'product lookups':'searches'} per minute. Try again in ${w} s.`)}L.t.push(now)}
+const numv=v=>v==null||v===''||isNaN(+v)?null:+v;
+function offToFood(p){const n=p.nutriments||{};let k=numv(n['energy-kcal_100g']),note='';if(k==null&&numv(n['energy-kj_100g'])!=null){k=n['energy-kj_100g']/4.184;note='kcal calculated from kJ.'}
+ const name=String(p.product_name_de||p.product_name||p.product_name_en||'').trim()||'Product '+p.code;const brand=String(Array.isArray(p.brands)?p.brands[0]||'':p.brands||'').split(',')[0].trim();
+ const r1=x=>x==null?null:Math.round(x*10)/10;
+ return{id:'off'+p.code,n:brand&&!name.toLowerCase().includes(brand.toLowerCase())?`${name} (${brand})`:name,a:[name.toLowerCase()],u:/\d\s*(ml|cl|l)\b/i.test(p.quantity||'')?'ml':'g',k:k==null?null:Math.round(k),p:r1(numv(n.proteins_100g)),c:r1(numv(n.carbohydrates_100g)),f:r1(numv(n.fat_100g)),tag:'off',bc:String(p.code||''),qty:p.quantity||'',note}}
+async function cacheGet(k,maxAge){try{const v=await DB.get('off',k);if(v&&Date.now()-v.at<maxAge)return v.data}catch(e){}return undefined}
+const cachePut=(k,data)=>DB.set('off',k,{at:Date.now(),data}).catch(()=>{});
+async function offProduct(code,fresh){
+ if(!fresh){const c=await cacheGet('p:'+code,30*864e5);if(c)return c}
+ if(!navigator.onLine)throw new Error('Offline, so the product cannot be looked up. Type the values from the package.');
+ take('p');
+ let r;try{r=await fetch(OFF_P+encodeURIComponent(code)+'.json?fields='+OFF_FIELDS)}catch(e){throw new Error('Open Food Facts did not answer. Type the values from the package.')}
+ if(r.status===404)return null;
+ if(!r.ok)throw new Error(r.status===429||r.status===503?'Open Food Facts is busy. Try again in a minute.':'Open Food Facts error, HTTP '+r.status);
+ let j;try{j=await r.json()}catch(e){throw new Error('Open Food Facts sent an unreadable answer')}
+ const p=j.product?offToFood(Object.assign({code},j.product)):null;if(p)cachePut('p:'+code,p);return p}
+async function offSearch(q){const key='s:'+q.toLowerCase().trim();const c=await cacheGet(key,864e5);if(c)return c;
+ if(!navigator.onLine)throw new Error('Offline. Search works again when you are online.');take('s');
+ let r;try{r=await fetch(OFF_S+'?search_terms='+encodeURIComponent(q)+'&search_simple=1&action=process&json=1&page_size=20&fields='+OFF_FIELDS)}catch(e){throw new Error('Open Food Facts did not answer')}
+ if(!r.ok)throw new Error(r.status===429||r.status===503?'Open Food Facts search is busy. Try again in a minute.':'Open Food Facts error, HTTP '+r.status);
+ let j;try{j=await r.json()}catch(e){throw new Error('Open Food Facts search is temporarily unavailable. Try again later.')}
+ const out=(j.products||[]).filter(p=>p.code).map(offToFood);cachePut(key,out);return out}
+const missingVals=p=>['k','p','c','f'].some(k=>p[k]==null);
+async function lookupCode(code){
+ code=String(code).replace(/\D/g,'');if(code.length<8){scanMsg('A barcode has 8 to 14 digits.');return}
+ stopCam();
+ const own=allFoods().find(f=>f.bc===code);if(own){sheet={s:'amount',food:own.id,amt:own.u==='pc'?1:100};render();toast('Found: '+own.n);return}
+ scanMsg('Looking up '+code+' …');
+ try{const p=await offProduct(code);
+  sheet=p?{s:'newfood',pre:p,why:missingVals(p)?'Some values are missing on Open Food Facts. Check the package and fill them in.':'Found on Open Food Facts. Check the values against the package, then save.'}:{s:'newfood',pre:{bc:code,u:'g'},why:`Barcode ${code} is not on Open Food Facts. Type the values from the package.`}}
+ catch(e){sheet={s:'newfood',pre:{bc:code,u:'g'},why:e.message}}
+ render()}
+
+/* ---------- barcode scanner: bundled zxing-wasm, live camera ---------- */
+let CAMS=null,scanLoop=null,zxP=null;
+const ZXOPT={formats:['EAN13','EAN8','UPCA','UPCE'],tryHarder:true,maxNumberOfSymbols:1};
+function zx(){if(!zxP)zxP=new Promise((res,rej)=>{if(window.ZXingWASM)return res();const s=document.createElement('script');s.src='vendor/zxing/zxing-reader.js';s.onload=res;s.onerror=()=>rej(new Error('decoder script missing'));document.head.appendChild(s)}).then(()=>ZXingWASM.prepareZXingModule({overrides:{locateFile:(p,pre)=>p.endsWith('.wasm')?new URL('vendor/zxing/'+p,location.href).href:pre+p},fireImmediately:true})).then(()=>window.ZXingWASM).catch(e=>{zxP=null;throw e});return zxP}
+const scanMsg=t=>{const e=document.getElementById('scanmsg');if(e)e.textContent=t};
+async function startCam(){
+ const v=document.getElementById('scanvid');if(!v)return;
+ try{await zx()}catch(e){CAM={ok:false,err:'Decoder failed to load: '+e.message,at:Date.now()};scanMsg(CAM.err+'. Type the number below.');return}
+ if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){CAM={ok:false,err:'No camera API (getUserMedia missing)',at:Date.now()};scanMsg('No camera access here. Type the number below.');return}
+ try{CAMS=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false})}
+ catch(e){CAM={ok:false,err:e.name+': '+e.message,at:Date.now()};scanMsg(e.name==='NotAllowedError'?'Camera permission was denied. Allow it in iPhone Settings, or type the number below.':'Camera error ('+e.name+'). Type the number below.');return}
+ if(!document.getElementById('scanvid')||!sheet||sheet.s!=='scan'){stopCam();return}
+ v.srcObject=CAMS;v.muted=true;try{await v.play()}catch(e){}
+ CAM={ok:true,at:Date.now(),frames:0,track:(CAMS.getVideoTracks()[0]||{}).label||''};scanMsg('Hold the barcode inside the frame.');
+ const cv=document.createElement('canvas'),cx=cv.getContext('2d',{willReadFrequently:true});let busy=false;
+ scanLoop=setInterval(async()=>{if(busy||!v.videoWidth)return;busy=true;try{const sc=Math.min(1,960/v.videoWidth);cv.width=Math.round(v.videoWidth*sc);cv.height=Math.round(v.videoHeight*sc);cx.drawImage(v,0,0,cv.width,cv.height);const r=await ZXingWASM.readBarcodes(cx.getImageData(0,0,cv.width,cv.height),ZXOPT);CAM.frames++;CAM.size=v.videoWidth+'×'+v.videoHeight;const hit=r.find(x=>x.isValid&&x.text);if(hit&&scanLoop){CAM.code=hit.text;CAM.ms=Date.now()-CAM.at;hapt();lookupCode(hit.text)}}catch(e){CAM.err=String(e)}busy=false},150)}
+function stopCam(){clearInterval(scanLoop);scanLoop=null;if(CAMS){CAMS.getTracks().forEach(t=>t.stop());CAMS=null}}
+async function decodeFile(file){scanMsg('Reading the photo …');try{const z=await zx();const r=await z.readBarcodes(file,ZXOPT);const hit=r.find(x=>x.isValid&&x.text);if(hit){CAM.photo='decoded '+hit.text;lookupCode(hit.text)}else{CAM.photo='no barcode found';scanMsg('No barcode found in the photo. Try closer, or type the number.')}}catch(e){scanMsg('Could not read the photo: '+e.message)}}
+
+/* ---------- setup on first start ---------- */
+let SU={step:'connect',msg:''};
+const tokenForm=repo=>`<div class="field"><label class="label" for="ghrepo">Private data repository</label><input class="input" id="ghrepo" value="${esc(repo)}" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="username/gym-app-data"></div>
+ <div class="field"><label class="label" for="ghtok">Access token</label><input class="input" id="ghtok" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="github_pat_…"></div>
+ <p class="small" style="margin:0">The token is stored only on this phone. It is never sent anywhere except GitHub.</p>`;
+function readTokenForm(){const repo=(document.getElementById('ghrepo').value||'').trim().replace(/^https?:\/\/github\.com\//i,'').replace(/\/+$/,''),token=(document.getElementById('ghtok').value||'').trim();if(!/^[\w.-]+\/[\w.-]+$/.test(repo))throw new Error('Enter the repository as username/gym-app-data');if(!/^(github_pat_|ghp_)\w{20,}$/.test(token))throw new Error('That does not look like a GitHub token. It starts with github_pat_');return{repo,token}}
+function renderSetup(){document.body.dataset.sec='gym';const sh=document.getElementById('sheet');sh.hidden=false;sh.dataset.cur='setup';
+ const s=SU;let b='';
+ if(s.step==='connect')b=`<p class="callout" style="margin:0">Connect your private data repository. The app downloads your exercises, PRs, foods and photos once and then works offline. Backups go to the same place.</p>${tokenForm(s.repo||defaultRepo())}<button class="primary" data-a="suconnect">Connect</button>${s.msg?`<p class="callout bad" style="margin:0">${esc(s.msg)}</p>`:''}<label class="linkbtn" for="sufile" style="display:flex;align-items:center;justify-content:center">Restore from a backup file instead</label><input type="file" id="sufile" class="vh" accept=".json,application/json">`;
+ else if(s.step==='choose')b=`<p class="callout" style="margin:0">Connected to <b>${esc(GHC.repo)}</b>. A backup exists. Restore it to get your logged history back, or start fresh from the seed data.</p><div class="list">${s.backups.slice(0,5).map(f=>`<button class="line" data-a="suback" data-n="${esc(f.name)}"><span class="t">Restore ${esc(f.name.replace(/\.json$/,''))}</span><span class="plus">Restore</span></button>`).join('')}</div><button class="ghost" data-a="suseed">Start fresh from seed data</button>`;
+ else b=`<p class="callout" style="margin:0">${esc(s.msg||'Working …')}</p>`;
+ sh.innerHTML=`<div class="shead"><h2>Gym Tracking App</h2></div><div class="sbody">${b}</div>`}
+async function finishSetup(st,withPhotos){
+ SU={step:'busy',msg:'Saving your data on this phone …'};renderSetup();
+ try{
+  if(GHC){await DB.set('kv','gh',GHC);if(withPhotos){SU.msg='Downloading reward photos …';renderSetup();await fetchPhotos(GHC,(n,t)=>{SU.msg=`Downloading reward photos: ${n} of ${t}`;renderSetup()})}}
+  await adoptState(st);await loadPhotos();await askPersist();
+  sheet=null;document.getElementById('sheet').dataset.cur='';render();toast(PERSIST.result?'Ready. Storage is marked persistent.':'Ready.');onOpen(true);
+ }catch(e){SU={step:'connect',msg:e.message||String(e),repo:GHC&&GHC.repo};renderSetup()}}
+
+/* ---------- persistent storage ---------- */
+async function askPersist(){try{if(!navigator.storage||!navigator.storage.persist){PERSIST={supported:false};return}const before=await navigator.storage.persisted();const result=before?true:await navigator.storage.persist();PERSIST={supported:true,before,result,at:Date.now()}}catch(e){PERSIST={supported:true,error:String(e)}}}
+
+/* ---------- device test ---------- */
+const isStandalone=()=>navigator.standalone===true||matchMedia('(display-mode: standalone)').matches;
+const SHELL=['./','index.html','manifest.webmanifest','sw.js','icons/icon-180.png','icons/icon-192.png','icons/icon-512.png','vendor/zxing/zxing-reader.js','vendor/zxing/zxing_reader.wasm'];
+function insets(){const p=document.createElement('div');p.style.cssText='position:fixed;top:0;left:0;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)';document.body.appendChild(p);const cs=getComputedStyle(p),o={t:parseFloat(cs.paddingTop),r:parseFloat(cs.paddingRight),b:parseFloat(cs.paddingBottom),l:parseFloat(cs.paddingLeft)};p.remove();return o}
+function drawEAN13(code){const L=['0001101','0011001','0010011','0111101','0100011','0110001','0101111','0111011','0110111','0001011'],R=L.map(p=>[...p].map(b=>b==='1'?'0':'1').join('')),G=R.map(p=>[...p].reverse().join('')),PAR=['LLLLLL','LLGLGG','LLGGLG','LLGGGL','LGLLGG','LGGLLG','LGGGLL','LGLGLG','LGLGGL','LGGLGL'];
+ const d=[...code].map(Number);let bits='101';for(let i=1;i<=6;i++)bits+=(PAR[d[0]][i-1]==='L'?L:G)[d[i]];bits+='01010';for(let i=7;i<=12;i++)bits+=R[d[i]];bits+='101';
+ const m=3,q=14*m,cv=document.createElement('canvas');cv.width=bits.length*m+2*q;cv.height=130;const c=cv.getContext('2d');c.fillStyle='#fff';c.fillRect(0,0,cv.width,cv.height);c.fillStyle='#000';[...bits].forEach((b,i)=>{if(b==='1')c.fillRect(q+i*m,12,m,106)});return cv}
+const measureFrames=ms=>new Promise(res=>{const t=[],s=performance.now();const f=now=>{t.push(now);if(now-s<ms)requestAnimationFrame(f);else{const d=t.slice(1).map((x,i)=>x-t[i]),avg=d.reduce((a,b)=>a+b,0)/Math.max(1,d.length);res({fps:Math.round(1000/avg),long:d.filter(x=>x>34).length,n:d.length,max:Math.round(Math.max(0,...d))})}};requestAnimationFrame(f)});
+const fpsTxt=r=>`${r.fps} fps average, ${r.long} of ${r.n} frames slower than 34 ms, slowest ${r.max} ms`;
+const fpsOK=r=>r.fps>=50&&r.long<=Math.max(2,r.n*.03);
+const AUTO=[
+ ['install','Opened from the home screen icon',async()=>{const sa=isStandalone();return{ok:sa,detail:sa?'Running as an installed app, full screen.':'Running in a browser tab. Open the app from its home screen icon and run again.'}}],
+ ['wakelock','Wake Lock (screen stays on)',async()=>{if(!('wakeLock' in navigator))return{ok:false,detail:'Wake Lock API not available'};const l=await navigator.wakeLock.request('screen');const held=!l.released;await l.release();return{ok:held,detail:`A screen wake lock was ${held?'granted':'not held'}.${WL.at?` During the last workout: ${WL.ok?'granted':'failed: '+WL.err}.`:''}`}}],
+ ['offline','Offline files ready',async()=>{if(!('serviceWorker' in navigator))return{ok:false,detail:'No service worker support'};const reg=await navigator.serviceWorker.getRegistration();const ctl=!!navigator.serviceWorker.controller;let n=0,miss=[];const names=await caches.keys();for(const u of SHELL){let hit=null;for(const nm of names){hit=await (await caches.open(nm)).match(new URL(u,location.href).href,{ignoreSearch:true});if(hit)break}if(hit)n++;else miss.push(u)}return{ok:ctl&&!miss.length,detail:`Service worker ${reg?(reg.active?'active':'installing'):'not registered'}, ${ctl?'controls this page':'does not control this page yet (reopen the app)'}. ${n} of ${SHELL.length} files cached${miss.length?'; missing: '+miss.join(', '):''}. Cache: ${names.join(', ')||'none'}.`}}],
+ ['idb','Data saved in IndexedDB',async()=>{const v='t'+Math.random();await DB.set('kv','__probe',v);const back=await DB.get('kv','__probe');await DB.del('kv','__probe');const st=await DB.get('kv','state');const days=st?Object.keys(st.days).filter(k=>st.days[k].entries.length).length:0;return{ok:back===v&&!!st,detail:`Write and read ${back===v?'work':'FAILED'}. Stored: ${st?st.sessions.length:0} workouts, ${days} days with food${st&&st.cur?', 1 workout in progress':''}. Last save ${lastSaved?ago(lastSaved):'not this session'}${saveErr?'. Save error: '+saveErr:''}.`}}],
+ ['persist','Persistent storage (navigator.storage.persist)',async()=>{if(!navigator.storage||!navigator.storage.persist)return{ok:false,detail:'Not supported'};const before=await navigator.storage.persisted();const res=before||await navigator.storage.persist();PERSIST={supported:true,before,result:res,at:Date.now()};let est='';try{const e=await navigator.storage.estimate();est=` Using ${(e.usage/1048576).toFixed(1)} MB of ${(e.quota/1048576).toFixed(0)} MB.`}catch(e){}return{ok:res,detail:`persist() returned ${res}${before?' (already persistent)':''}.${est}`}}],
+ ['zxing','Barcode decoder (zxing-wasm)',async()=>{const t0=performance.now();const z=await zx();const t1=performance.now();const code=TEST_BC[1]||TEST_BC[0]||'4006381333931';const cv=drawEAN13(code);const r=await z.readBarcodes(cv.getContext('2d').getImageData(0,0,cv.width,cv.height),ZXOPT);const got=(r.find(x=>x.isValid)||{}).text;return{ok:got===code,detail:`Loaded in ${Math.round(t1-t0)} ms. Test barcode ${code} decoded as ${got||'nothing'}. Native BarcodeDetector: ${'BarcodeDetector' in window?'present':'absent'}.`}}],
+ ['camera','Camera API',async()=>{const ok=!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia);let cams='';try{const ds=await navigator.mediaDevices.enumerateDevices();cams=` ${ds.filter(d=>d.kind==='videoinput').length} cameras listed.`}catch(e){}return{ok,detail:(ok?'getUserMedia is available.':'getUserMedia is missing.')+cams+(CAM.at?` Last scan session: ${CAM.ok?'camera started':'failed: '+CAM.err}${CAM.size?', '+CAM.size:''}${CAM.frames?', '+CAM.frames+' frames read':''}${CAM.code?', found '+CAM.code+' after '+Math.round(CAM.ms/100)/10+' s':''}.`:' Use the hands-on scan test for the live camera.')}}],
+ ['offprod','Open Food Facts barcode lookup',async()=>{const code=TEST_BC[0]||'3017620422003';const p=await offProduct(code,true);return{ok:!!p,detail:p?`${code}: ${p.n}. Per 100 ${p.u}: ${p.k??'?'} kcal, ${p.p??'?'} g protein, ${p.c??'?'} g carbs, ${p.f??'?'} g fat.`:`${code} not found`}}],
+ ['offsearch','Open Food Facts text search (German products)',async()=>{const l=await offSearch('tofu natur');return{ok:l.length>0,detail:`${l.length} results for “tofu natur”${l[0]?', first: '+l[0].n:''}. Results are cached for a day.`}}],
+ ['github','GitHub private repository',async()=>{if(!GHC)return{ok:false,detail:'Not connected'};const j=await ghRepo(GHC);const l=await ghList('backups');return{ok:!!j.private,detail:`${j.full_name} is ${j.private?'private':'PUBLIC – make it private!'}. ${l.length} backup files.`}}],
+ ['backup','Backup within the last 7 days',async()=>{const r=GHC&&navigator.onLine?await backup('device test'):{ok:false,msg:GHC?'Offline':'Not connected'};return{ok:r.ok&&!backupStale(),detail:`${r.msg}. Last success ${ago(BK.lastOk)}.`}}],
+ ['share','File export (share sheet with files)',async()=>{let f;try{f=new File(['{}'],'t.json',{type:'application/json'})}catch(e){}const ok=!!(f&&navigator.canShare&&navigator.canShare({files:[f]}));return{ok,detail:`${ok?'Sharing files is supported.':'Sharing files is not supported; export falls back to a download.'} showSaveFilePicker: ${'showSaveFilePicker' in window?'present':'absent'}.${EXP.at?` Last export: ${EXP.ok===false?'failed '+EXP.err:EXP.ok===null?'cancelled':'done via '+EXP.how}.`:''}`}}],
+ ['layout','Tab bar reaches the bottom, notch is clear',async()=>{const ins=insets(),tb=document.getElementById('tabs').getBoundingClientRect(),pane=document.getElementById('scroll').getBoundingClientRect(),H=window.innerHeight;const gap=Math.round(H-tb.bottom),ok=Math.abs(gap)<=1&&pane.top>=ins.t-0.5&&(!isStandalone()||ins.b>0);return{ok,detail:`Screen ${innerWidth}×${H}. Safe areas: top ${ins.t}, bottom ${ins.b}, left ${ins.l}, right ${ins.r}. Tab bar ends ${gap} px above the screen edge, content starts at ${Math.round(pane.top)} px. Check visually too.`}}],
+ ['anim','Shaking Log PR button, frame rate',async()=>{const el=document.getElementById('animdemo');if(el){el.classList.remove('armpop');void el.offsetWidth;el.classList.add('armpop')}const r=await measureFrames(1500);return{ok:fpsOK(r),detail:fpsTxt(r)+'. Use the popup buttons below for the reward test.'}}],
+ ['haptic','Haptic switch support',async()=>{const i=document.createElement('input');i.type='checkbox';i.setAttribute('switch','');const sw='switch' in i;return{ok:null,detail:`Switch control ${sw?'is supported (iOS 17.4 or later)':'is not detected'}. Vibration API: ${'vibrate' in navigator?'present':'absent'}. Feel test below.`}}],
+ ['speech','Speech recognition API',async()=>{const has='SpeechRecognition' in window||'webkitSpeechRecognition' in window;return{ok:null,detail:`${has?'Present':'Absent'}. Not used; dictation uses the keyboard microphone.`}}],
+ ['day','Day change at 04:00',async()=>({ok:null,detail:`Food and workout day is ${today()}. Clock ${new Date().toLocaleString('en-GB')}.`})]
+];
+const MAN=[
+ ['install','1. Install','In Safari tap Share, then Add to Home Screen, then Add. Open the app from the new icon. Pass if it opens full screen with no Safari bars and shows its own icon.'],
+ ['offline','2. Offline','Turn on airplane mode. Swipe the app away from the app switcher, open it again. Log a set and a meal. Pass if everything works.',[['Open Gym','gotab:gym']]],
+ ['saved','3. Saved data','Log a workout and a few meals. Force-quit the app and reopen it. Then restart the phone and open it again. Pass if all data is still there.'],
+ ['barcode','4. Barcode, live camera','Open the scanner and allow the camera. Scan your two test products ({BC}). If the camera fails, note the message and test typing the number.',[['Open scanner','sheet:scan']]],
+ ['product','5. Product data','Search “Tofu” and a German product name in Search or add food, then tap “Search Open Food Facts”. Pass if products appear and can be saved; missing values must not break anything.',[['Open food search','sheet:add']]],
+ ['dictation','6. Dictation','Open dictation, tap the box, tap the keyboard microphone and say: “200 Gramm Skyr und zwei Eier”. Switch the keyboard to English and say: “one banana and 50 grams of oats”. Pass if both are recognised.',[['Open dictation','sheet:dictate']]],
+ ['backup','7. Backup','Finish a workout while online. Then open Settings: the last backup should say just now. On github.com, the gym-app-data repository should show a new file in backups.',[['Back up now','act:bknow']]],
+ ['restore','8. Restore','Only after 7 passed: Settings › Export file and save it to Files as a second copy. Delete the app from the home screen (this deletes its data). Add it again from Safari, enter the token, choose Restore. Pass if workouts, meals and settings are back.'],
+ ['export','9. File export','Tap Export, choose Save to Files, pick iCloud Drive. Pass if the file appears in the Files app and opens as readable text.',[['Export file','act:export']]],
+ ['layout','10. Layout','Look at the bottom: the tab bar colour must reach the screen edge with no strip. Nothing may hide behind the notch or the home bar, on both Gym and Food and in sheets.'],
+ ['swipe','11. Swipe','Swipe left and right between Gym and Food, starting in the middle and near the edges. Scroll up and down. Pass if switching is easy and never fights vertical scrolling.'],
+ ['anim','12. Animations','Play both popups. Pass if the photo smash, shake and confetti run smoothly, and the shaking Log PR button below looks fluid.',[['Weight PR popup','hype:weight'],['Rep PR popup','hype:rep']]],
+ ['haptic','13. Haptics','First flip the visible switch: you should feel a tick. Then tap “Hidden tick”. Pass if the hidden one also ticks. Don’t spend long on this.',[['Hidden tick','act:hapt']]],
+ ['wakelock','14. Screen stays on','Start a workout and leave the phone untouched for longer than your auto-lock time. Pass if the screen stays on.',[['Keep screen on now','act:wl']]]
+];
+const badge=ok=>ok===true?'<span class="badge pass">PASS</span>':ok===false?'<span class="badge fail">FAIL</span>':ok==='run'?'<span class="badge">…</span>':ok===undefined?'<span class="badge">—</span>':'<span class="badge">INFO</span>';
+function devtestHTML(){
+ return `<p class="callout" style="margin:0">Run this from the home screen icon, not in Safari. The automatic checks take a few seconds and need the internet for the Open Food Facts and GitHub checks.</p>
+ <button class="primary" data-a="dtrun" ${DT.running?'disabled':''}>${DT.running?'Running …':'Run automatic checks'}</button>
+ <div class="list">${AUTO.map(([id,name])=>{const r=DT.auto[id];return `<div class="trow">${badge(r?r.ok:undefined)}<div class="tx"><div style="font-weight:600">${esc(name)}</div>${r?`<div class="small">${esc(r.detail)}</div>`:''}</div></div>`}).join('')}</div>
+ <div class="field"><span class="label">Shaking button for the frame-rate check</span><button class="primary armbtn" id="animdemo" tabindex="-1">Log PR</button></div>
+ <span class="label" style="margin-top:6px">Hands-on tests</span>
+ ${MAN.map(([id,title,how,tools])=>{const m=DT.manual[id]||{};return `<div class="mt"><div class="tt"><span>${esc(title)}</span>${badge(m.state==='pass'?true:m.state==='fail'?false:undefined)}</div><div class="how">${esc(how.replace('{BC}',TEST_BC.length?TEST_BC.join(' and '):'any two packaged foods'))}</div>
+  ${id==='haptic'?`<label class="vswitch"><input type="checkbox" switch> <span class="small">Visible switch</span></label>`:''}
+  ${tools?`<div class="tools">${tools.map(([l,t])=>`<button class="ghost" data-a="dttool" data-t="${t}">${esc(l)}</button>`).join('')}</div>`:''}
+  <div class="pf"><button class="pass ${m.state==='pass'?'on':''}" data-a="dtmark" data-id="${id}" data-t="pass">Pass</button><button class="fail ${m.state==='fail'?'on':''}" data-a="dtmark" data-id="${id}" data-t="fail">Fail</button></div>
+  <input class="input" data-dtnote="${id}" placeholder="Note (what happened)" value="${esc(m.note||'')}" autocomplete="off"></div>`}).join('')}
+ <button class="primary" data-a="dtshare">Share results</button><button class="linkbtn" data-a="dtclear">Clear results</button>`}
+const saveDT=()=>DB.set('kv','devtest',{auto:DT.auto,manual:DT.manual}).catch(()=>{});
+async function runAuto(){DT.running=true;render();for(const [id,,fn] of AUTO){DT.auto[id]={ok:'run',detail:'Running …'};updDT();try{const r=await Promise.race([fn(),new Promise((_,rej)=>setTimeout(()=>rej(new Error('timed out after 20 s')),20000))]);DT.auto[id]=Object.assign(r,{at:Date.now()})}catch(e){DT.auto[id]={ok:false,detail:'Error: '+(e.message||e),at:Date.now()}}updDT()}DT.running=false;saveDT();if(sheet&&sheet.s==='devtest')render()}
+function updDT(){if(!sheet||sheet.s!=='devtest')return;const rows=document.querySelectorAll('#sheet .trow');AUTO.forEach(([id,name],i)=>{const r=DT.auto[id],el=rows[i];if(el)el.innerHTML=`${badge(r?r.ok:undefined)}<div class="tx"><div style="font-weight:600">${esc(name)}</div>${r?`<div class="small">${esc(r.detail)}</div>`:''}</div>`})}
+function dtReport(){const L=[`Gym app device test, version ${APP_VERSION}, ${new Date().toLocaleString('en-GB')}`,navigator.userAgent,isStandalone()?'Opened from home screen':'Opened in browser','','Automatic checks:'];AUTO.forEach(([id,name])=>{const r=DT.auto[id];L.push(`${r?r.ok===true?'PASS':r.ok===false?'FAIL':'INFO':'NOT RUN'}  ${name}${r?': '+r.detail:''}`)});L.push('','Hands-on tests:');MAN.forEach(([id,title])=>{const m=DT.manual[id]||{};L.push(`${m.state?m.state.toUpperCase():'NOT TESTED'}  ${title}${m.note?': '+m.note:''}`)});return L.join('\n')}
+async function popupTest(kind){hype(kind,kind==='weight'?'Test popup · Weight PR':'Test popup · Rep PR');const r=await measureFrames(1300);DT.auto.popup={ok:fpsOK(r),detail:fpsTxt(r),at:Date.now()};const m=DT.manual.anim||(DT.manual.anim={});m.note=(m.note?m.note.replace(/ ?\[popup:[^\]]*\]/,''):'')+` [popup: ${r.fps} fps, ${r.long} slow frames]`;saveDT()}
+
+/* ---------- render ---------- */
+const paneEl=()=>document.getElementById(S.tab==='gym'?'pane-gym':'pane-food');
+function placePager(idx,dx){const w=document.getElementById('scroll').clientWidth||1;document.getElementById('pager').style.transform=`translateX(calc(${-50*idx}% + ${dx}px))`;document.getElementById('tabind').style.transform=`translateX(${(idx-dx/w)*100}%)`}
+function render(){
+ if(!S)return;
+ document.body.dataset.sec=S.tab;
+ const pg=document.getElementById('pane-gym'),pf=document.getElementById('pane-food'),tg=pg.scrollTop,tf=pf.scrollTop;
+ pg.innerHTML=S.cur?gymLive():gymHome();pf.innerHTML=foodHome();pg.scrollTop=tg;pf.scrollTop=tf;
+ pg.inert=S.tab!=='gym';pf.inert=S.tab!=='food';
+ placePager(S.tab==='gym'?0:1,0);
+ document.getElementById('tabbtn').innerHTML=[['gym','Gym'],['food','Food']].map(([k,l])=>`<button class="tab" data-a="tab" data-t="${k}" ${S.tab===k?'aria-current="page"':''}>${l}${k==='gym'&&S.cur&&S.tab!=='gym'?'<span class="dot" aria-label="Workout running"></span>':''}</button>`).join('');
+ const sh=document.getElementById('sheet');
+ if(!sheet||sheet.s!=='scan')stopCam();
+ if(sheet){if(!(sheet.s==='scan'&&sh.dataset.cur==='scan')){const b=sh.querySelector('.sbody'),st=b?b.scrollTop:0,same=sh.dataset.cur===sheet.s;sh.innerHTML=SH[sheet.s]();sh.dataset.cur=sheet.s;sh.hidden=false;const nb=sh.querySelector('.sbody');if(nb&&same)nb.scrollTop=st;if(sheet.s==='scan')startCam()}}else{sh.hidden=true;sh.innerHTML='';sh.dataset.cur=''}
+ bindCharts();checkProtein();
+}
+function bindCharts(){document.querySelectorAll('[data-chart]').forEach(el=>{const cfg=JSON.parse(el.dataset.chart),svg=el.querySelector('svg'),dt=el.querySelector('.rd-d'),vt=el.querySelector('.rd-v'),dot=el.querySelector('.dotm');const move=e=>{const r=svg.getBoundingClientRect(),x=(e.clientX-r.left)/r.width*cfg.W,n=cfg.pts.length;let i=Math.round((x-cfg.L)/(cfg.W-cfg.L-cfg.R)*(n-1));i=Math.max(0,Math.min(n-1,i));const p=cfg.pts[i];dt.textContent=shortDate(p.d);vt.innerHTML=`${fmt(p.v)} <span class="small">${cfg.unit}</span>`;const xs=n<2?cfg.L:cfg.L+i/(n-1)*(cfg.W-cfg.L-cfg.R);const lines=svg.querySelectorAll('path')[1].getAttribute('d').split(/[ML]/).filter(Boolean)[i].trim().split(' ');dot.setAttribute('cx',xs);dot.setAttribute('cy',lines[1])};svg.onpointermove=move;svg.onpointerdown=move})}
+
+/* ---------- actions ---------- */
+const curSet=()=>{const c=S.cur,x=c.ex[c.open],j=x.sets.findIndex(t=>!t.done);return{x,j,t:x.sets[j]}};
+const propagate=x=>{const j=x.sets.findIndex(t=>!t.done),a=x.sets[j];x.sets.forEach((t,i)=>{if(i>j&&!t.done){t.w=a.w;t.d=a.d}})};
+const clampD=t=>{if(t.d!=null&&t.d>=t.w)t.d=Math.max(0,t.w-2.5)};
+const A={
+ tab(el){S.tab=el.dataset.t;save();sheet=null;render()},
+ open(el){const s=el.dataset.s;sheet={s};if(s==='gymstats')sheet.ex=EX.bank?'bank':SPLIT[0].ex[0].id;if(s==='restore')loadRestoreList();render();if(s==='dictate'){const i=document.getElementById('dict');i&&i.focus()}},
+ close(){sheet=null;render()},
+ pick(el){window.__pick=+el.dataset.i;render()},
+ start(el){window.__pick=null;startWorkout(+el.dataset.i);paneEl().scrollTop=0},
+ openex(el){const i=+el.dataset.i;S.cur.open=S.cur.open===i?-1:i;save();render();scrollEx(i)},
+ w(el){const{x,t}=curSet();const d=+el.dataset.d;t.w=Math.max(0,Math.round((t.w+d*2.5)*10)/10);if(t.w===0)t.d=undefined;clampD(t);propagate(x);save();render()},
+ dw(el){const{x,t}=curSet();t.d=Math.max(0,Math.round((t.d+(+el.dataset.d)*2.5)*10)/10);clampD(t);propagate(x);save();render()},
+ adddrop(){const{x,t}=curSet();t.d=Math.max(0,t.w-5);propagate(x);save();render()},
+ rmdrop(){const{x,t}=curSet();t.d=undefined;propagate(x);save();render()},
+ r(el){const{t}=curSet();t.r=Math.max(1,t.r+(+el.dataset.d));save();render()},
+ log(el){const i=+el.dataset.i,j=+el.dataset.j,x=S.cur.ex[i],t=x.sets[j],maxW=Math.max(...curRecs(x).map(q=>q[0]));t.done=true;S.cur.seq++;t.seq=S.cur.seq;recalc();flashId=x.id+j;save();render();if(navigator.vibrate)navigator.vibrate(t.pr?[30,40,30]:15);setTimeout(()=>{flashId=null},600);if(t.pr)hype(t.w>maxW?'weight':'rep',`${EX[x.id].n}: ${setTxt(t.w,t.r,t.d)}`)},
+ hypeclose(){nextHype()},
+ nextex(el){const n=+el.dataset.i+1;S.cur.open=n;save();render();scrollEx(n)},
+ redo(el){const x=S.cur.ex[+el.dataset.i];x.sets[+el.dataset.j].done=false;recalc();save();render()},
+ addset(el){const x=S.cur.ex[+el.dataset.i],l=x.sets[x.sets.length-1];x.sets.push({w:l.w,r:l.r,d:l.d,done:false,pr:false});save();render()},
+ rmset(el){const x=S.cur.ex[+el.dataset.i];if(x.sets.length<=3)return;for(let k=x.sets.length-1;k>=0;k--)if(!x.sets[k].done){x.sets.splice(k,1);break}save();render()},
+ finishopen(){const b=S.bw.length?S.bw[S.bw.length-1].v:(S.cfg.bwStart||80);sheet={s:'finish',bw:b,shake:false};render()},
+ bw(el){sheet.bw=Math.round((sheet.bw+(+el.dataset.d)*.1)*10)/10;render()},
+ shake(){sheet.shake=!sheet.shake;render()},
+ finish(el){const c=S.cur,sets=[];c.ex.forEach(x=>x.sets.filter(t=>t.done).sort((a,b)=>a.seq-b.seq).forEach(t=>sets.push({ex:x.id,w:t.w,r:t.r,d:t.d,pr:t.pr})));const prs=sets.filter(t=>t.pr).length;if(sets.length)S.sessions.push({date:today(),day:c.day,sets,started:c.started,ended:Date.now()});if(el.dataset.bw){const b=S.bw.filter(v=>v.d!==today());b.push({d:today(),v:sheet.bw});S.bw=b}if(sheet.shake){const m=shakeMeal();if(m)addEntry(m.n,m.items,m.id)}S.nextIdx=(c.idx+1)%SPLIT.length;S.cur=null;save();sheet=null;render();paneEl().scrollTop=0;releaseAwake();
+  toast(prs?`Saved · ${prs} PR${prs>1?'s':''}`:'Workout saved');
+  saved().then(()=>backup('after workout')).then(r=>{if(r&&!r.ok&&GHC)toast('Saved on the phone. Backup failed: '+r.msg,null,'',6000)})},
+ discard(){sheet={s:'discard'};SH.discard=()=>head('Cancel workout')+`<div class="sbody"><p style="margin:0">This removes the sets logged in this workout.</p><button class="primary" data-a="discardyes">Cancel workout</button><button class="ghost" data-a="close">Keep training</button></div>`;render()},
+ discardyes(){S.cur=null;save();sheet=null;releaseAwake();render()},
+ dtype(el){day().type=el.dataset.t;save();render()},
+ supp(el){const d=day(),s=el.dataset.t;d.supps=d.supps.includes(s)?d.supps.filter(x=>x!==s):d.supps.concat(s);save();render()},
+ logmeal(el){logMeal(S.meals.find(m=>m.id===el.dataset.m))},
+ mealopen(el){const m=S.meals.find(x=>x.id===el.dataset.m);sheet={s:'meal',meal:m.id,items:m.items.map(i=>i.slice())};render()},
+ mi(el){const it=sheet.items[+el.dataset.i],f=food(it[0]),d=+el.dataset.d;it[1]=Math.max(0,it[1]+d*stepFor(f,it[1]));render()},
+ logadj(){logMeal(S.meals.find(m=>m.id===sheet.meal),sheet.items.filter(i=>i[1]>0))},
+ savemeal(){const m=S.meals.find(x=>x.id===sheet.meal);m.items=sheet.items.map(i=>i.slice());save();render();toast('Saved for next time')},
+ delmeal(){S.meals=S.meals.filter(m=>m.id!==sheet.meal);save();sheet=null;render()},
+ rmentry(el){const d=day(),e=d.entries.splice(+el.dataset.i,1)[0],i=+el.dataset.i;save();render();toast(`Removed ${e.n}`,()=>{d.entries.splice(i,0,e);save();render()})},
+ foodopen(el){const f=food(el.dataset.f);sheet={s:'amount',food:f.id,amt:f.u==='pc'?1:100};render()},
+ amt(el){const f=food(sheet.food);sheet.amt=Math.max(0,sheet.amt+(+el.dataset.d)*stepFor(f,sheet.amt));render()},
+ logfood(){const f=food(sheet.food),x=addEntry(f.n,[[f.id,sheet.amt]]);save();sheet=null;render();const d=day(),i=d.entries.length-1;toast(`${f.n} · ${int(x.k)} kcal`,()=>{d.entries.splice(i,1);save();render()})},
+ newdraft(){draft={name:'',items:[]};sheet={s:'compose'};render()},
+ draftwith(){draft={name:'',items:[[sheet.food,sheet.amt]]};sheet={s:'compose'};render()},
+ todraft(){draft.items.push([sheet.food,sheet.amt]);sheet={s:'compose'};render()},
+ dr(el){const it=draft.items[+el.dataset.i],f=food(it[0]);it[1]=Math.max(0,it[1]+(+el.dataset.d)*stepFor(f,it[1]));render()},
+ dri(el){draft.items.splice(+el.dataset.i,1);render()},
+ canceldraft(){draft=null;sheet=null;render()},
+ savedraft(){const nm=document.getElementById('dname');if(nm)draft.name=nm.value.trim();const it=draft.items.filter(i=>i[1]>0);if(!draft.name||!it.length){toast(!it.length?'Add an ingredient first':'Give the meal a name first');return}const m={id:'m'+Date.now(),n:draft.name,sub:it.map(([id])=>food(id).n).slice(0,3).join(', '),items:it};S.meals.push(m);draft=null;logMeal(m)},
+ newfood(){sheet={s:'newfood',q:document.getElementById('q').value};render()},
+ nfu(el){const p=sheet.pre=sheet.pre||{};const n=document.getElementById('nfn');if(n)p.n=n.value;['k','p','c','f'].forEach(k=>{const v=document.getElementById('nf'+k).value.trim().replace(',','.');p[k]=v===''?null:parseFloat(v)});p.u=el.dataset.t;render()},
+ savefood(){const p=sheet.pre||{};const g=id=>{const t=(document.getElementById(id).value||'').trim().replace(',','.');return t===''||isNaN(parseFloat(t))?null:parseFloat(t)};const n=document.getElementById('nfn').value.trim();if(!n){toast('Enter a name first');return}const v={k:g('nfk'),p:g('nfp'),c:g('nfc'),f:g('nff')};const miss=Object.values(v).some(x=>x==null);
+  const f={id:p.id||('f'+Date.now()),n,a:[n.toLowerCase()],u:p.u||'g',k:v.k||0,p:v.p||0,c:v.c||0,f:v.f||0,tag:p.tag==='off'?'off':'own'};if(p.bc)f.bc=p.bc;
+  S.foods=S.foods.filter(x=>x.id!==f.id);S.foods.push(f);save();sheet={s:'amount',food:f.id,amt:100};render();if(miss)toast('Empty values were saved as 0')},
+ offsearch(){const q=(sheet.q||'').trim();if(!q)return;const n=q.toLowerCase();sheet.off={q:n,busy:true};document.getElementById('results').innerHTML=resultsHTML(sheet.q);offSearch(q).then(l=>{if(sheet&&sheet.off&&sheet.off.q===n){sheet.off={q:n,list:l};const r=document.getElementById('results');if(r)r.innerHTML=resultsHTML(sheet.q)}}).catch(e=>{if(sheet&&sheet.off&&sheet.off.q===n){sheet.off={q:n,err:e.message};const r=document.getElementById('results');if(r)r.innerHTML=resultsHTML(sheet.q)}})},
+ offpick(el){const p=sheet.off.list[+el.dataset.i];const own=S.foods.find(f=>f.id===p.id);if(own){sheet={s:'amount',food:own.id,amt:100};render();return}sheet={s:'newfood',pre:Object.assign({},p),why:missingVals(p)?'Some values are missing on Open Food Facts. Check the package and fill them in.':'From Open Food Facts. Check the values against the package, then save.'};render()},
+ bclook(){const v=document.getElementById('bcin').value;lookupCode(v)},
+ logdict(){const r=parseSpoken(sheet.q).filter(x=>x.food);const d=day();const before=d.entries.length;r.forEach(x=>addEntry(x.food.n,[[x.food.id,x.amt]]));save();sheet=null;render();toast(`${r.length} item${r.length>1?'s':''} logged`,()=>{d.entries.length=before;save();render()})},
+ phase(el){S.phase=el.dataset.t;S.goals=goalsFor(PHASES.find(p=>p[0]===S.phase)[2]);save();render()},
+ askreset(){sheet.confirm=true;render()},noconfirm(){sheet.confirm=false;render()},
+ reset(){const keep=S.cfg;S=stateFromCfg(keep);applyCfg();save();sheet=null;render();toast('Test data deleted')},
+ /* backup and restore */
+ bknow(el){if(el)el.disabled=true;toast('Backing up …');backup('manual').then(r=>{toast(r.ok?'Backup done. '+r.msg:'Backup failed: '+r.msg,null,'',6000);if(sheet&&sheet.s==='settings')render()})},
+ export(){exportFile()},
+ restorepick(el){sheet.pick=el.dataset.n;render()},restoreno(){sheet.pick=null;render()},
+ async restoreyes(){const name=sheet.pick;sheet={s:'restore',list:[],err:'Restoring '+name+' …'};render();try{await backup('before restore');const f=await ghText('backups/'+name);if(!f)throw new Error('File not found');const p=parseImport(f.text);await adoptState(p.state);sheet=null;render();toast('Restored '+name)}catch(e){sheet={s:'restore',list:null,err:'Restore failed: '+e.message};loadRestoreList();render()}},
+ async restorefileyes(){const p=sheet.parsed;try{if(GHC)await backup('before restore');await adoptState(p.state);sheet=null;render();toast('Restored from file')}catch(e){toast('Restore failed: '+e.message)}},
+ async tokensave(){const msg=t=>{const e=document.getElementById('tokmsg');if(e)e.textContent=t};let c;try{c=readTokenForm()}catch(e){msg(e.message);return}msg('Checking …');try{const j=await ghRepo(c);GHC=c;await DB.set('kv','gh',GHC);BK.lastErr=null;BK.hash=null;await saveBK();msg(`Connected to ${j.full_name}.${j.private?'':' Warning: this repository is public!'}`);const hasPhotos=Object.values(PICS).flat().length;if(!hasPhotos){msg('Connected. Downloading photos …');await fetchPhotos(GHC);await loadPhotos()}backup('token changed').then(r=>{toast(r.ok?'Connected and backed up':'Connected. Backup failed: '+r.msg)})}catch(e){msg(e.message)}},
+ /* setup */
+ async suconnect(){let c;try{c=readTokenForm()}catch(e){SU.msg=e.message;renderSetup();return}SU={step:'busy',msg:'Checking the token …',repo:c.repo};renderSetup();
+  try{const j=await ghRepo(c);if(!j.private)throw new Error(`${c.repo} is public. Make it private on GitHub first, it contains personal data.`);GHC=c;SU.msg='Reading seed data …';renderSetup();const sd=await ghText('seed-data.json',c);if(!sd)throw new Error('seed-data.json is missing in '+c.repo);SU.seed=JSON.parse(sd.text);cfgFromSeed(SU.seed);const bl=(await ghList('backups',c)).filter(f=>/\.json$/.test(f.name)).sort((a,b)=>b.name.localeCompare(a.name));if(bl.length){SU={step:'choose',seed:SU.seed,backups:bl};renderSetup()}else finishSetup(stateFromCfg(cfgFromSeed(SU.seed)),true)}
+  catch(e){GHC=null;SU={step:'connect',msg:e.message||String(e),repo:c.repo};renderSetup()}},
+ async suback(el){const name=el.dataset.n;SU={step:'busy',msg:'Downloading '+name+' …',seed:SU.seed};renderSetup();try{const f=await ghText('backups/'+name);const p=parseImport(f.text);finishSetup(p.state,true)}catch(e){SU={step:'connect',msg:'Restore failed: '+e.message};renderSetup()}},
+ suseed(){finishSetup(stateFromCfg(cfgFromSeed(SU.seed)),true)},
+ /* device test */
+ dtrun(){if(!DT.running)runAuto()},
+ dtmark(el){const id=el.dataset.id,m=DT.manual[id]||(DT.manual[id]={});m.state=m.state===el.dataset.t?null:el.dataset.t;saveDT();render()},
+ dtclear(){DT={auto:{},manual:{}};saveDT();render()},
+ dtshare(){const txt=dtReport();if(navigator.share){navigator.share({title:'Gym app device test',text:txt}).catch(()=>{})}else if(navigator.clipboard){navigator.clipboard.writeText(txt).then(()=>toast('Results copied'))}},
+ dttool(el){const[k,v]=el.dataset.t.split(':');if(k==='sheet'){sheet={s:v};render()}else if(k==='gotab'){S.tab=v;sheet=null;save();render()}else if(k==='hype')popupTest(v);else if(k==='act'){if(v==='hapt')hapt();else if(v==='wl'){if(!S.cur){toast('Start a workout first; the lock is held during workouts')}else{keepAwake().then(()=>toast(WL.ok?'Screen wake lock is on':'Wake lock failed: '+WL.err))}}else A[v](el)}}
+};
+async function loadRestoreList(){try{const l=(await ghList('backups')).filter(f=>/\.json$/.test(f.name)).sort((a,b)=>b.name.localeCompare(a.name));if(sheet&&sheet.s==='restore'){sheet.list=l;render()}}catch(e){if(sheet&&sheet.s==='restore'){sheet.list=[];sheet.err=e.message;render()}}}
+function scrollEx(i){const el=document.getElementById('ex'+i),sc=paneEl();if(!el)return;const st=sc.querySelector('.status');const off=(st?st.offsetHeight:0)+6;sc.scrollTop+=el.getBoundingClientRect().top-sc.getBoundingClientRect().top-off}
+/* swipe between Gym and Food */
+(()=>{const pg=document.getElementById('pager'),ind=document.getElementById('tabind');let sw=null,swallow=0;
+ const stop=commit=>{if(!sw)return;const{lock,dx,t}=sw;sw=null;if(lock!=='h')return;pg.classList.remove('drag');ind.classList.remove('drag');swallow=Date.now();const W=document.getElementById('scroll').clientWidth,idx=S.tab==='gym'?0:1,v=Math.abs(dx)/Math.max(1,Date.now()-t),go=commit&&(Math.abs(dx)>W*.22||(v>.45&&Math.abs(dx)>30)),ni=go?(dx<0?1:0):idx;
+  if(ni!==idx){S.tab=ni?'food':'gym';save()}render()};
+ pg.addEventListener('touchstart',e=>{if(!S||e.touches.length>1||e.target.closest('input,select,textarea')){sw=null;return}const c=e.touches[0];sw={x:c.clientX,y:c.clientY,t:Date.now(),lock:null,dx:0}},{passive:true});
+ pg.addEventListener('touchmove',e=>{if(!sw)return;const c=e.touches[0],dx=c.clientX-sw.x,dy=c.clientY-sw.y;if(sw.lock===null){if(Math.abs(dx)<9&&Math.abs(dy)<9)return;sw.lock=Math.abs(dx)>Math.abs(dy)*1.2?'h':'v';if(sw.lock==='h'){pg.classList.add('drag');ind.classList.add('drag')}}if(sw.lock!=='h')return;e.preventDefault();const idx=S.tab==='gym'?0:1,edge=(idx===0&&dx>0)||(idx===1&&dx<0);sw.dx=edge?dx*.25:dx;placePager(idx,sw.dx)},{passive:false});
+ pg.addEventListener('touchend',()=>stop(true));pg.addEventListener('touchcancel',()=>stop(false));
+ pg.addEventListener('click',e=>{if(Date.now()-swallow<350){e.stopPropagation();e.preventDefault()}},true);
+})();
+document.addEventListener('click',e=>{const el=e.target.closest('[data-a]');if(S&&S.cur&&(!wlock||wlock.released))keepAwake();if(!el||el.disabled)return;const f=A[el.dataset.a];if(f)f(el)});
+document.addEventListener('input',e=>{const t=e.target;
+ if(t.id==='q'){sheet.q=t.value;document.getElementById('results').innerHTML=resultsHTML(t.value)}
+ if(t.id==='dict'){sheet.q=t.value;document.getElementById('dres').innerHTML=dictHTML(t.value)}
+ if(t.id==='dname'&&draft)draft.name=t.value;
+ if(t.dataset.note){S.notes=S.notes||{};S.notes[t.dataset.note]=t.value;save()}
+ if(t.dataset.dtnote){const m=DT.manual[t.dataset.dtnote]||(DT.manual[t.dataset.dtnote]={});m.note=t.value;saveDT()}});
+document.addEventListener('keydown',e=>{if(e.key!=='Enter')return;const t=e.target;if(t.id==='bcin'){e.preventDefault();lookupCode(t.value)}if(t.id==='q'&&t.value.trim()){e.preventDefault();t.blur();A.offsearch()}});
+document.addEventListener('change',e=>{const t=e.target,num=parseFloat(String(t.value).replace(',','.'));
+ if(t.id==='wval'){const c=curSet();c.t.w=isNaN(num)?0:Math.max(0,num);if(c.t.w===0)c.t.d=undefined;clampD(c.t);propagate(c.x);save();render()}
+ if(t.id==='dval'&&!isNaN(num)){const c=curSet();c.t.d=Math.max(0,num);clampD(c.t);propagate(c.x);save();render()}
+ if(t.id==='bwval'&&!isNaN(num)){sheet.bw=num;render()}
+ if(t.id==='amtval'&&!isNaN(num)){sheet.amt=Math.max(0,num);render()}
+ if(t.id==='exsel'){sheet.ex=t.value;render()}
+ if(t.dataset.g&&!isNaN(num)){const[a,b]=t.dataset.g.split('.');S.goals[a][b]=num;save()}
+ if(t.id==='scanfile'&&t.files[0])decodeFile(t.files[0]);
+ if((t.id==='impfile'||t.id==='sufile')&&t.files[0]){const f=t.files[0];f.text().then(txt=>{const p=parseImport(txt);if(t.id==='sufile')finishSetup(p.state,false);else{sheet={s:'restorefile',parsed:p};render()}}).catch(err=>{if(t.id==='sufile'){SU.msg=err.message;renderSetup()}else toast(err.message)});t.value=''}
+});
+document.addEventListener('focusin',e=>{if(e.target.matches('.stpc input'))e.target.select&&e.target.select()});
+
+/* ---------- app open, resume, day change ---------- */
+let hiddenAt=0,lastDay=today();
+function onOpen(){if(GHC&&navigator.onLine)backup('app open')}
+document.addEventListener('visibilitychange',()=>{if(!S)return;if(document.hidden){hiddenAt=Date.now();return}if(today()!==lastDay){lastDay=today();render()}if(S.cur)keepAwake();if(hiddenAt&&Date.now()-hiddenAt>15*6e4)onOpen()});
+setInterval(()=>{if(S&&!document.hidden&&today()!==lastDay){lastDay=today();render()}},60000);
+addEventListener('online',()=>{if(S&&GHC&&(BK.lastErr||backupStale()))backup('back online')});
+
+
+async function boot(){
+ let hadCtl=false;
+ if('serviceWorker' in navigator){hadCtl=!!navigator.serviceWorker.controller;navigator.serviceWorker.register('sw.js').catch(e=>{SWINFO.err=String(e)});navigator.serviceWorker.addEventListener('controllerchange',()=>{if(hadCtl)toast('A new version is ready',()=>location.reload(),'Reload',15000);hadCtl=true})}
+ try{
+  const dt=await DB.get('kv','devtest');if(dt)DT={auto:dt.auto||{},manual:dt.manual||{}};
+  GHC=await DB.get('kv','gh')||null;BK=await DB.get('kv','backupMeta')||{};
+  const st=await DB.get('kv','state');
+  if(st&&st.cfg){S=Object.assign(stateFromCfg(st.cfg),st);applyCfg();lastDay=today();render();loadPhotos().catch(()=>{});askPersist();onOpen()}
+  else renderSetup();
+ }catch(e){const sh=document.getElementById('sheet');sh.hidden=false;sh.innerHTML=`<div class="shead"><h2>Storage problem</h2></div><div class="sbody"><p class="callout bad" style="margin:0">The app could not open its storage: ${esc(e.message||e)}. Close the app completely and open it again.</p></div>`}
+}
+boot();
+</script>
+</body></html>
