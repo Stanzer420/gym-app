@@ -154,6 +154,8 @@ button:disabled{opacity:.45}
 .usual .edit{width:40px;display:grid;place-items:center;color:var(--mute);flex:none}
 .usual .edit svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .plus{font:600 17px/1 var(--display);color:var(--acc);white-space:nowrap;font-variant-numeric:tabular-nums}
+/* only the + kcal pill logs a meal, so scrolling over the row never logs by accident */
+.usual .plus.tickbtn{flex:none;display:flex;align-items:center;min-height:44px;padding:0 14px;border-radius:22px;background:var(--panel2)}
 .supps{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
 .supp{min-height:46px;background:var(--panel);border-radius:var(--r-s);display:flex;align-items:center;justify-content:center;text-align:center;font-weight:600;font-size:13.5px;color:var(--mute);padding:2px}
 .supp.on{background:var(--acc);color:var(--on)}
@@ -287,7 +289,7 @@ label.hbtn{display:flex;align-items:center;justify-content:center}
 
 <script>
 'use strict';
-const APP_VERSION='0.3.7';
+const APP_VERSION='0.3.8';
 /* ---------- personal data lives in the private repo; these are filled from local storage at start ---------- */
 let SPLIT=[],EX={},FOODS=[],SUPPS=[],MAINT=2500,BASE_MEALS=[],TEST_BC=[];
 const PHASES=[['cut','Lose fat',-400],['main','Maintain',0],['lean','Lean gain',250],['bulk','Bulk',500]];
@@ -438,7 +440,7 @@ function foodHome(){
  const fits=m=>!m.weekdays||m.weekdays.includes(wd);
  const usual=S.meals.filter(m=>m.usual&&fits(m)&&!logged.has(m.id));
  const saved=S.meals.filter(m=>(!m.usual||!fits(m))&&!logged.has(m.id));
- const mrow=m=>{const x=macros(m.items);return `<div class="usual"><label class="main tickbtn" role="button" data-a="logmeal" data-m="${m.id}"><span style="min-width:0"><span class="t" style="font-weight:600;display:block">${esc(m.n)}</span><span class="small">${esc(m.sub||'')}</span></span><span class="plus">+ ${int(x.k)}</span>${TICKIN}</label><button class="edit" data-a="mealopen" data-m="${m.id}" aria-label="Adjust ${esc(m.n)}">${I.edit}</button></div>`};
+ const mrow=m=>{const x=macros(m.items);return `<div class="usual"><div class="main"><span style="min-width:0"><span class="t" style="font-weight:600;display:block">${esc(m.n)}</span><span class="small">${esc(m.sub||'')}</span></span><label class="plus tickbtn" role="button" data-a="logmeal" data-m="${m.id}" aria-label="Log ${esc(m.n)}">+ ${int(x.k)}${TICKIN}</label></div><button class="edit" data-a="mealopen" data-m="${m.id}" aria-label="Adjust ${esc(m.n)}">${I.edit}</button></div>`};
  const mac=(lbl,v,goal,min)=>{const ok=min&&v>=goal;return `<div><span class="label">${lbl}</span><span class="v">${int(v)}<small> / ${goal} g</small></span><div class="bar ${ok?'ok':''}"><i style="width:${Math.min(100,v/goal*100)}%"></i></div>${min?`<span class="${ok?'ok-t':'small'}" style="font-size:12px">${ok?'Goal reached':`${int(goal-v)} g to minimum`}</span>`:''}</div>`};
  return `<div class="wrap">${topbar('Food','foodstats')}<div class="warnslot">${warnHTML()}</div>
  <section class="macro">
