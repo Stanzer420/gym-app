@@ -1,6 +1,6 @@
 /* Offline support: every app file is cached on install and served from the cache.
    Bump VERSION on each deploy so phones pick up the new files. */
-const VERSION='gym-0.3.8';
+const VERSION='gym-0.3.9';
 /* Text recognition files (about 16 MB) are cached on first use in their own cache, which survives app updates.
    Change OCR when the files in vendor/tesseract change. */
 const OCR='gym-ocr-tess7';
